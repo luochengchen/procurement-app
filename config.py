@@ -5,11 +5,16 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Render free tier: project directory is read-only, use /tmp for writable files.
+# Local development: use project directory.
+IS_RENDER = os.environ.get("RENDER", "") == "true"
+_WRITABLE_DIR = "/tmp" if IS_RENDER else BASE_DIR
+
 # Database
-DATABASE_PATH = os.path.join(BASE_DIR, "data.db")
+DATABASE_PATH = os.environ.get("DATABASE_PATH", os.path.join(_WRITABLE_DIR, "data.db"))
 
 # Upload
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", os.path.join(_WRITABLE_DIR, "uploads"))
 MAX_UPLOAD_SIZE_MB = 10
 ALLOWED_IMAGE_TYPES = {"png", "jpg", "jpeg", "webp", "bmp"}
 
