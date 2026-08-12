@@ -1,64 +1,125 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}跨境采购助手{% endblock %}</title>
+    <!-- 主题初始化：避免闪烁，读取本地存储或系统偏好 -->
+    <script>
+    (function () {
+        try {
+            var stored = localStorage.getItem('theme');
+            var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            var theme = stored || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-bs-theme', theme);
+        } catch (e) {}
+    })();
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     {% block head %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+    <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/">
-                <i class="bi bi-globe2"></i> 跨境采购助手
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-globe2 me-2"></i>跨境采购助手
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.path == '/' }}" href="/">
-                            <i class="bi bi-speedometer2"></i> 首页
+                            <i class="bi bi-speedometer2 me-1"></i>首页
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.path == '/materials' }}" href="/materials">
-                            <i class="bi bi-search"></i> 材料价格
+                            <i class="bi bi-search me-1"></i>材料价格
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.path == '/calculator' }}" href="/calculator">
-                            <i class="bi bi-calculator"></i> 成本核算
+                            <i class="bi bi-calculator me-1"></i>成本核算
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.path == '/image-search' }}" href="/image-search">
-                            <i class="bi bi-camera"></i> 识图搜索
+                            <i class="bi bi-camera me-1"></i>识图搜索
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.path == '/certification' }}" href="/certification">
-                            <i class="bi bi-patch-check"></i> 认证查询
+                            <i class="bi bi-patch-check me-1"></i>认证查询
                         </a>
+                    </li>
+                    <li class="nav-item ms-lg-2">
+                        <button class="theme-toggle" id="themeToggle" title="切换明暗主题" aria-label="切换明暗主题">
+                            <i class="bi bi-sun-fill" id="themeIconLight"></i>
+                            <i class="bi bi-moon-stars-fill d-none" id="themeIconDark"></i>
+                        </button>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <main class="container-fluid py-3">
+    <main>
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="text-center text-muted py-3 border-top mt-4">
-        <small>跨境采购助手 v1.0 &middot; Powered by Flask</small>
+    <footer>
+        跨境采购助手 v1.0 &middot; Powered by Flask
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+    // 主题切换
+    (function () {
+        var toggle = document.getElementById('themeToggle');
+        var iconLight = document.getElementById('themeIconLight');
+        var iconDark = document.getElementById('themeIconDark');
+
+        function syncIcon() {
+            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            iconLight.classList.toggle('d-none', dark);
+            iconDark.classList.toggle('d-none', !dark);
+        }
+
+        toggle.addEventListener('click', function () {
+            var current = document.documentElement.getAttribute('data-bs-theme');
+            var next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-bs-theme', next);
+            try { localStorage.setItem('theme', next); } catch (e) {}
+            syncIcon();
+            // 通知图表重绘（若页面已定义全局 redrawCharts）
+            if (typeof window.redrawCharts === 'function') window.redrawCharts();
+        });
+
+        syncIcon();
+    })();
+
+    // 图表配色读取器：页面 JS 从 CSS 变量取当前主题色
+    window.chartColors = function () {
+        var cs = getComputedStyle(document.documentElement);
+        return {
+            ink: cs.getPropertyValue('--ink').trim(),
+            muted: cs.getPropertyValue('--muted').trim(),
+            gridline: cs.getPropertyValue('--gridline').trim(),
+            series1: cs.getPropertyValue('--series-1').trim(),
+            series2: cs.getPropertyValue('--series-2').trim(),
+            series3: cs.getPropertyValue('--series-3').trim(),
+            series4: cs.getPropertyValue('--series-4').trim(),
+            series5: cs.getPropertyValue('--series-5').trim(),
+            series6: cs.getPropertyValue('--series-6').trim(),
+            surface: cs.getPropertyValue('--surface').trim(),
+        };
+    };
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

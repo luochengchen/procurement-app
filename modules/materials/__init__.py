@@ -54,6 +54,37 @@ def api_list():
         session.close()
 
 
+@materials_bp.route("/api/materials/stats")
+def api_stats():
+    """Aggregate material count and avg price by category."""
+    session = get_session()
+    try:
+        from sqlalchemy import func
+        rows = (
+            session.query(
+                MaterialCategory.name, MaterialCategory.icon,
+                func.count(Material.id), func.avg(Material.current_price),
+            )
+            .outerjoin(Material, Material.category_id == MaterialCategory.id)
+            .group_by(MaterialCategory.id)
+            .order_by(MaterialCategory.sort_order)
+            .all()
+        )
+        return jsonify([
+            {
+                "category": name,
+                "icon": icon,
+                "count": count,
+                "avg_price": round(avg or 0, 2),
+            }
+            for name, icon, count, avg in rows
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+
+
 @materials_bp.route("/api/materials/<int:material_id>/history")
 def api_price_history(material_id: int):
     """Get price history for a specific material."""

@@ -63,7 +63,12 @@
         <div class="card">
             <div class="card-header"><strong><i class="bi bi-pie-chart"></i> 费用构成</strong></div>
             <div class="card-body" id="breakdown">
-                <p class="text-muted">点击"计算"查看费用构成分析</p>
+                <div class="chart-container-sm mb-3" id="pieChartContainer" style="display:none">
+                    <canvas id="costPieChart"></canvas>
+                </div>
+                <div id="breakdownTable">
+                    <p class="text-muted">点击"计算"查看费用构成分析</p>
+                </div>
             </div>
         </div>
     </div>

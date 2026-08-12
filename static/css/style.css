@@ -1,109 +1,414 @@
-/* Procurement App — custom styles */
+/* ============================================================
+   跨境采购助手 — 设计系统
+   明暗主题通过 data-bs-theme 切换，配色与图表共用同一套调色板
+   ============================================================ */
 
-:root {
-    --bs-primary-rgb: 13, 110, 253;
+/* ---- 主题色板（light 默认） ---- */
+:root,
+[data-bs-theme="light"] {
+  color-scheme: light;
+
+  /* 表面与文字 */
+  --surface: #fcfcfb;          /* 卡片表面 */
+  --page: #f9f9f7;             /* 页面背景 */
+  --ink: #0b0b0b;              /* 主文字 */
+  --ink-2: #52514e;            /* 次文字 */
+  --muted: #898781;            /* 弱文字 / 轴线 */
+  --gridline: #e1e0d9;         /* 分隔线 */
+  --border: rgba(11, 11, 11, 0.10);
+
+  /* 强调色 = categorical slot 1 (blue) */
+  --primary: #2a78d6;
+  --primary-hover: #256abf;
+
+  /* 分类色（图表 + 标签共用） */
+  --series-1: #2a78d6;  /* blue */
+  --series-2: #eb6834;  /* orange */
+  --series-3: #1baf7a;  /* aqua */
+  --series-4: #eda100;  /* yellow */
+  --series-5: #e87ba4;  /* magenta */
+  --series-6: #008300;  /* green */
+
+  /* 状态色（涨跌 / 强制可选） */
+  --good: #006300;    /* 下跌 / 成功 */
+  --warning: #eda100;
+  --serious: #ec835a;
+  --critical: #d03b3b; /* 上涨 / 严重 */
+
+  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.05);
+  --shadow-md: 0 4px 14px rgba(11, 11, 11, 0.08);
 }
 
-/* Card hover effects */
+/* ---- 暗色主题 ---- */
+[data-bs-theme="dark"] {
+  color-scheme: dark;
+
+  --surface: #1a1a19;
+  --page: #0d0d0d;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --gridline: #2c2c2a;
+  --border: rgba(255, 255, 255, 0.10);
+
+  --primary: #3987e5;
+  --primary-hover: #5598e7;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+
+  --good: #0ca30c;
+  --warning: #c98500;
+  --serious: #ec835a;
+  --critical: #e66767;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- 覆盖 Bootstrap 变量，让组件跟随设计系统 ---- */
+[data-bs-theme="light"] {
+  --bs-body-bg: var(--page);
+  --bs-body-color: var(--ink);
+  --bs-primary: var(--primary);
+  --bs-primary-rgb: 42, 120, 214;
+  --bs-border-color: var(--gridline);
+  --bs-card-bg: var(--surface);
+  --bs-body-font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+[data-bs-theme="dark"] {
+  --bs-body-bg: var(--page);
+  --bs-body-color: var(--ink);
+  --bs-primary: var(--primary);
+  --bs-primary-rgb: 57, 135, 229;
+  --bs-border-color: var(--gridline);
+  --bs-card-bg: var(--surface);
+  --bs-body-font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+/* ---- 基础排版 ---- */
+body {
+  background: var(--page);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+/* ---- 导航栏 ---- */
+.navbar {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.navbar-brand {
+  color: var(--ink) !important;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.navbar-brand i {
+  color: var(--primary);
+}
+
+.navbar .nav-link {
+  color: var(--ink-2) !important;
+  font-size: 0.925rem;
+  font-weight: 500;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.navbar .nav-link:hover {
+  color: var(--ink) !important;
+  background: var(--gridline);
+}
+
+.navbar .nav-link.active {
+  color: var(--primary) !important;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* 主题切换按钮 */
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink-2);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.theme-toggle:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+/* ---- 卡片 ---- */
 .card {
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
+
 .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
 }
 
-/* Price trend indicators */
-.trend-up { color: #dc3545; }
-.trend-down { color: #198754; }
-.trend-stable { color: #6c757d; }
+.card-header {
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
 
-/* Dashboard stat cards */
+/* ---- 统计卡片 ---- */
 .stat-card {
-    border-left: 4px solid var(--bs-primary);
+  border-left: 3px solid var(--primary);
+  border-radius: 14px;
+  padding: 1.1rem 1.25rem;
 }
-.stat-card .stat-value {
-    font-size: 1.75rem;
-    font-weight: 700;
-}
+
 .stat-card .stat-label {
-    font-size: 0.85rem;
-    color: #6c757d;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 500;
 }
 
-/* Image upload zone */
-.upload-zone {
-    border: 2px dashed #dee2e6;
-    border-radius: 12px;
-    padding: 3rem;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-}
-.upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--bs-primary);
-    background: rgba(var(--bs-primary-rgb), 0.04);
-}
-.upload-zone i {
-    font-size: 3rem;
-    color: #adb5bd;
+.stat-card .stat-value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 0.25rem;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Cost table */
-.cost-summary-row {
-    font-weight: 700;
-    background: #f8f9fa;
-}
-.cost-grand-total {
-    font-size: 1.25rem;
+/* ---- 快捷入口 ---- */
+.quick-link {
+  text-decoration: none;
+  color: var(--ink);
+  border-radius: 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Certification badge */
+.quick-link:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  color: var(--ink);
+}
+
+.quick-link i {
+  color: var(--primary);
+}
+
+/* ---- 价格趋势 ---- */
+.trend-up { color: var(--critical); }
+.trend-down { color: var(--good); }
+.trend-stable { color: var(--muted); }
+
+/* ---- 表格 ---- */
+.table {
+  color: var(--ink);
+  --bs-table-bg: transparent;
+  margin-bottom: 0;
+}
+
+.table thead th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0.9rem;
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 0.85rem 0.9rem;
+  border-bottom: 1px solid var(--gridline);
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+
+.table-hover tbody tr {
+  transition: background 0.12s ease;
+}
+
+.table-hover tbody tr:hover {
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
+}
+
+/* 可点击行 */
+.row-clickable {
+  cursor: pointer;
+}
+
+/* ---- 徽章 ---- */
+.badge-soft {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  font-weight: 500;
+  padding: 0.35em 0.7em;
+  border-radius: 8px;
+}
+
+/* 认证强制/可选 */
 .cert-badge-mandatory {
-    background: #dc3545;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
+  background: color-mix(in srgb, var(--critical) 15%, transparent);
+  color: var(--critical);
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
+
 .cert-badge-optional {
-    background: #6c757d;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
+  background: color-mix(in srgb, var(--muted) 15%, transparent);
+  color: var(--muted);
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-/* Material category pills */
-.category-pill {
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.category-pill:hover {
-    transform: scale(1.05);
-}
-.category-pill.active {
-    background: var(--bs-primary) !important;
-    color: #fff !important;
+/* ---- 上传区 ---- */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
 }
 
-/* Search result card */
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
+.upload-zone i {
+  font-size: 3rem;
+  color: var(--muted);
+}
+
+/* ---- 供应商结果卡 ---- */
+.supplier-card {
+  position: relative;
+  overflow: hidden;
+}
+
 .supplier-card .platform-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 6px;
 }
 
-/* Loading spinner overlay */
-.spinner-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255,255,255,0.7);
-    z-index: 9999;
-    justify-content: center;
-    align-items: center;
+/* ---- 图表容器 ---- */
+.chart-container {
+  position: relative;
+  height: 280px;
+  width: 100%;
 }
-.spinner-overlay.show {
-    display: flex;
+
+.chart-container-sm {
+  position: relative;
+  height: 220px;
+  width: 100%;
+}
+
+/* ---- 筛选行 ---- */
+.filter-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* ---- 页脚 ---- */
+footer {
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.82rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+/* ---- 表单 ---- */
+.form-control,
+.form-select {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+.form-label {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+/* ---- 按钮 ---- */
+.btn {
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+/* ---- 费用合计行 ---- */
+.cost-summary-row td {
+  font-weight: 700;
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+  border-top: 1px solid var(--border);
+}
+
+.cost-grand-total {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* ---- 响应式微调 ---- */
+@media (max-width: 768px) {
+  main {
+    padding: 1rem 0.75rem 2.5rem;
+  }
+  .stat-card .stat-value {
+    font-size: 1.5rem;
+  }
 }
