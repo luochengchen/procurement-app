@@ -13,6 +13,20 @@ app = Flask(__name__)
 # Ensure upload directory exists
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Initialize database and seed data (runs on import, required for gunicorn)
+init_db()
+from database import get_session
+from models import MaterialCategory
+_session = get_session()
+try:
+    if _session.query(MaterialCategory).count() == 0:
+        from seed_data import seed_categories, seed_materials, seed_certifications
+        _cat_ids = seed_categories(_session)
+        seed_materials(_session, _cat_ids)
+        seed_certifications(_session)
+finally:
+    _session.close()
+
 
 # ---------------------------------------------------------------------------
 # Register blueprints
@@ -55,6 +69,5 @@ def server_error(e):
 # Main
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    init_db()
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host="0.0.0.0", port=port)
