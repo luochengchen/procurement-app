@@ -1,0 +1,109 @@
+/* Procurement App — custom styles */
+
+:root {
+    --bs-primary-rgb: 13, 110, 253;
+}
+
+/* Card hover effects */
+.card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Price trend indicators */
+.trend-up { color: #dc3545; }
+.trend-down { color: #198754; }
+.trend-stable { color: #6c757d; }
+
+/* Dashboard stat cards */
+.stat-card {
+    border-left: 4px solid var(--bs-primary);
+}
+.stat-card .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+.stat-card .stat-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* Image upload zone */
+.upload-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    padding: 3rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--bs-primary);
+    background: rgba(var(--bs-primary-rgb), 0.04);
+}
+.upload-zone i {
+    font-size: 3rem;
+    color: #adb5bd;
+}
+
+/* Cost table */
+.cost-summary-row {
+    font-weight: 700;
+    background: #f8f9fa;
+}
+.cost-grand-total {
+    font-size: 1.25rem;
+}
+
+/* Certification badge */
+.cert-badge-mandatory {
+    background: #dc3545;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.cert-badge-optional {
+    background: #6c757d;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* Material category pills */
+.category-pill {
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.category-pill:hover {
+    transform: scale(1.05);
+}
+.category-pill.active {
+    background: var(--bs-primary) !important;
+    color: #fff !important;
+}
+
+/* Search result card */
+.supplier-card .platform-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+}
+
+/* Loading spinner overlay */
+.spinner-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.7);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+.spinner-overlay.show {
+    display: flex;
+}

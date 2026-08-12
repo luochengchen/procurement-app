@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}产品认证查询 - 跨境采购助手{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h3><i class="bi bi-patch-check"></i> 产品认证需求查询</h3>
+        <p class="text-muted">按产品类别和目标市场查询所需的认证要求，助您合规出海</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">产品类别</label>
+                <select class="form-select" id="productFilter">
+                    <option value="">全部类别</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">目标市场</label>
+                <select class="form-select" id="countryFilter">
+                    <option value="">全部国家/地区</option>
+                    {% for c in countries %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" id="queryBtn">
+                    <i class="bi bi-search"></i> 查询
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>认证要求列表</strong>
+        <small class="text-muted">标注 <span class="cert-badge-mandatory">强制</span> / <span class="cert-badge-optional">可选</span></small>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>产品类别</th>
+                    <th>目标市场</th>
+                    <th>认证名称</th>
+                    <th>认证机构</th>
+                    <th>强制/可选</th>
+                    <th>预估费用</th>
+                    <th>周期(天)</th>
+                    <th>说明</th>
+                </tr>
+            </thead>
+            <tbody id="certTable">
+                <tr><td colspan="8" class="text-center text-muted py-4">点击"查询"加载认证数据</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- External API note -->
+<div class="alert alert-info mt-3 d-flex align-items-center">
+    <i class="bi bi-info-circle-fill me-2"></i>
+    <div>
+        <strong>外部API接口预留</strong> —
+        当前为内置数据库查询。外部实时认证数据库接入请使用
+        <code>GET /api/certification/external?product=&country=&hs_code=</code>
+        （当前返回 501）
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/certification.js') }}"></script>
+{% endblock %}

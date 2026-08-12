@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}识图搜索供应商 - 跨境采购助手{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h3><i class="bi bi-camera"></i> 一键识图搜供应商</h3>
+        <p class="text-muted">上传产品图片，跨平台搜索同款货源供应商</p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Upload zone -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><strong>上传产品图片</strong></div>
+            <div class="card-body">
+                <div class="upload-zone" id="uploadZone">
+                    <i class="bi bi-cloud-upload"></i>
+                    <p class="mt-2 mb-1">点击或拖拽图片到此处</p>
+                    <small class="text-muted">支持 JPG、PNG、WebP，最大 10MB</small>
+                    <input type="file" id="fileInput" accept="image/*" hidden>
+                </div>
+                <div id="previewContainer" class="text-center mt-3" style="display:none">
+                    <img id="previewImg" class="img-fluid rounded" style="max-height:300px">
+                    <button class="btn btn-sm btn-outline-danger mt-2" id="clearPreview">
+                        <i class="bi bi-x"></i> 清除
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label">辅助关键词（可选）</label>
+                    <input type="text" class="form-control" id="keywordInput" placeholder="输入产品关键词提高搜索精度">
+                </div>
+                <button class="btn btn-primary w-100 mt-3" id="searchBtn" disabled>
+                    <i class="bi bi-search"></i> 开始搜索
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong><i class="bi bi-list-check"></i> 搜索结果</strong>
+                <small class="text-muted" id="searchNote"></small>
+            </div>
+            <div class="card-body" id="resultsContainer">
+                <p class="text-muted text-center py-4">上传图片后点击搜索</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/image_search.js') }}"></script>
+{% endblock %}

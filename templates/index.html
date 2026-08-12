@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}首页 - 跨境采购助手{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h3><i class="bi bi-speedometer2"></i> 采购看板</h3>
+        <p class="text-muted">实时材料报价概览，快速掌握市场行情</p>
+    </div>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4" id="statsRow">
+    <div class="col-md-3">
+        <div class="card stat-card p-3">
+            <div class="stat-label">材料种类</div>
+            <div class="stat-value" id="statCategories">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 border-start border-warning">
+            <div class="stat-label">今日更新</div>
+            <div class="stat-value" id="statUpdated">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 border-start border-success">
+            <div class="stat-label">涨价品种</div>
+            <div class="stat-value trend-up" id="statUp">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 border-start border-danger">
+            <div class="stat-label">降价品种</div>
+            <div class="stat-value trend-down" id="statDown">-</div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick actions -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <a href="/materials" class="card text-decoration-none p-3 text-center hover-shadow">
+            <i class="bi bi-search fs-1 text-primary"></i>
+            <div class="mt-2 fw-semibold">材料价格查询</div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="/calculator" class="card text-decoration-none p-3 text-center">
+            <i class="bi bi-calculator fs-1 text-success"></i>
+            <div class="mt-2 fw-semibold">成本核算</div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="/image-search" class="card text-decoration-none p-3 text-center">
+            <i class="bi bi-camera fs-1 text-warning"></i>
+            <div class="mt-2 fw-semibold">识图搜索</div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="/certification" class="card text-decoration-none p-3 text-center">
+            <i class="bi bi-patch-check fs-1 text-info"></i>
+            <div class="mt-2 fw-semibold">认证查询</div>
+        </a>
+    </div>
+</div>
+
+<!-- Featured materials -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-star"></i> 精选材料报价</strong>
+        <a href="/materials" class="btn btn-sm btn-outline-primary">查看全部</a>
+    </div>
+    <div class="card-body" id="featuredMaterials">
+        <div class="text-center text-muted py-4">
+            <div class="spinner-border spinner-border-sm"></div>
+            加载中...
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
