@@ -36,12 +36,14 @@ from modules.materials import materials_bp
 from modules.calculator import calculator_bp
 from modules.image_search import image_search_bp
 from modules.certification import certification_bp
+from modules.factory import factory_bp
 
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(materials_bp)
 app.register_blueprint(calculator_bp)
 app.register_blueprint(image_search_bp)
 app.register_blueprint(certification_bp)
+app.register_blueprint(factory_bp)
 
 
 # ---------------------------------------------------------------------------

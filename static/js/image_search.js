@@ -68,7 +68,15 @@ searchBtn.addEventListener("click", async () => {
 
         if (data.note) searchNote.textContent = data.note;
 
-        resultsContainer.innerHTML = data.results
+        // 工厂匹配联动：跳转到工厂模块，按识别关键词匹配可生产的工厂
+        const kw = data.keyword || "";
+        const matchBar = kw
+            ? `<a href="/factory?q=${encodeURIComponent(kw)}" class="btn btn-outline-primary w-100 mb-3">
+                 <i class="bi bi-buildings me-1"></i> 匹配可生产该产品的工厂
+               </a>`
+            : "";
+
+        resultsContainer.innerHTML = matchBar + data.results
             .map(
                 (r) => `
             <div class="card mb-2 supplier-card">
