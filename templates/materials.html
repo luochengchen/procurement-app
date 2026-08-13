@@ -12,16 +12,25 @@
 <!-- 筛选 -->
 <div class="filter-bar">
     <div class="row g-2 align-items-end">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label">关键词搜索</label>
             <input type="text" class="form-control" id="searchInput" placeholder="搜索材料名称、规格...">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label">材料分类</label>
             <select class="form-select" id="categoryFilter">
                 <option value="">全部分类</option>
                 {% for cat in categories %}
                 <option value="{{ cat.name }}">{{ cat.icon }} {{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">地区</label>
+            <select class="form-select" id="regionFilter">
+                <option value="">全部地区</option>
+                {% for r in regions %}
+                <option value="{{ r }}">{{ r }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -55,6 +64,7 @@
                     <th>分类</th>
                     <th>材料名称</th>
                     <th>规格</th>
+                    <th>地区</th>
                     <th>单位</th>
                     <th>最新价格</th>
                     <th>趋势</th>
@@ -63,7 +73,7 @@
                 </tr>
             </thead>
             <tbody id="materialsTable">
-                <tr><td colspan="8" class="text-center text-muted py-4">点击"查询"加载数据</td></tr>
+                <tr><td colspan="9" class="text-center text-muted py-4">点击"查询"加载数据</td></tr>
             </tbody>
         </table>
     </div>

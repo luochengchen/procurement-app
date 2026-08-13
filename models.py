@@ -34,6 +34,7 @@ class Material(Base):
     name = Column(String(128), nullable=False)
     spec = Column(String(256), default="")
     unit = Column(String(32), default="kg")
+    region = Column(String(64), default="全国")  # 地区报价维度（余姚/东莞/永康等）
     current_price = Column(Float, default=0.0)
     price_date = Column(Date, default=date.today)
     currency = Column(String(8), default="CNY")
@@ -54,6 +55,7 @@ class Material(Base):
             "name": self.name,
             "spec": self.spec,
             "unit": self.unit,
+            "region": self.region,
             "current_price": self.current_price,
             "price_date": self.price_date.isoformat() if self.price_date else "",
             "currency": self.currency,
@@ -112,7 +114,7 @@ class CostItem(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     template_id = Column(Integer, ForeignKey("cost_templates.id"), nullable=False)
     item_type = Column(String(32), nullable=False, default="material")
-    # material / labor / utility / processing_out / processing_own / other
+    # material / labor / utility / processing_out / processing_own / mold / freight / packaging / loss / other
     name = Column(String(256), nullable=False)
     unit = Column(String(32), default="pcs")
     unit_price = Column(Float, default=0.0)

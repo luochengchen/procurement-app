@@ -10,8 +10,15 @@ const TYPE_SERIES = {
     utility: "series3",
     processing_out: "series4",
     processing_own: "series5",
+    mold: "series6",
+    freight: "series7",
+    packaging: "series8",
+    loss: "series6",
     other: "series6",
 };
+
+// 材料价格联动：name → {unit, price}
+let materialMap = {};
 
 // 主题切换重绘饼图
 window.redrawCharts = () => {
@@ -23,13 +30,17 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("calcBtn").addEventListener("click", calculate);
     document.getElementById("clearBtn").addEventListener("click", clearAll);
     document.getElementById("exportBtn").addEventListener("click", exportResult);
+    document.getElementById("loadTemplateBtn").addEventListener("click", loadTemplate);
+
+    loadTemplates();
+    loadMaterials();
 
     addRow("material");
     addRow("labor");
     addRow("utility");
 });
 
-function addRow(defaultType = "other") {
+function addRow(defaultType = "other", data = null) {
     const tbody = document.getElementById("costItems");
     const idx = rowIndex++;
 
@@ -41,7 +52,7 @@ function addRow(defaultType = "other") {
     tr.id = `row-${idx}`;
     tr.innerHTML = `
         <td><select class="form-select form-select-sm item-type">${typeOptions}</select></td>
-        <td><input type="text" class="form-control form-control-sm item-name" placeholder="项目名称"></td>
+        <td><input type="text" class="form-control form-control-sm item-name" placeholder="项目名称" list="materialOptions"></td>
         <td><input type="text" class="form-control form-control-sm item-unit" value="pcs"></td>
         <td><input type="number" class="form-control form-control-sm item-price" value="0" min="0" step="0.01"></td>
         <td><input type="number" class="form-control form-control-sm item-qty" value="1" min="0.01" step="0.01"></td>
@@ -49,11 +60,43 @@ function addRow(defaultType = "other") {
         <td><button class="btn btn-sm btn-outline-danger del-row"><i class="bi bi-x"></i></button></td>`;
     tbody.appendChild(tr);
 
+    // 预填模板数据
+    if (data) {
+        tr.querySelector(".item-type").value = data.item_type || data.type || "other";
+        tr.querySelector(".item-name").value = data.name || "";
+        tr.querySelector(".item-unit").value = data.unit || "pcs";
+        tr.querySelector(".item-price").value = data.unit_price ?? 0;
+        tr.querySelector(".item-qty").value = data.quantity ?? 1;
+    }
+
     tr.querySelector(".del-row").addEventListener("click", () => {
         tr.remove();
         updateGrandTotal();
     });
     tr.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", () => updateRowSubtotal(idx)));
+
+    // 材料价格联动：选中材料名后自动填充单位与单价
+    const nameInput = tr.querySelector(".item-name");
+    const typeSelect = tr.querySelector(".item-type");
+    nameInput.addEventListener("change", () => applyMaterialLink(nameInput, tr));
+    typeSelect.addEventListener("change", () => applyMaterialLink(nameInput, tr));
+
+    updateRowSubtotal(idx);
+    return tr;
+}
+
+// 材料价格联动：当类型为「原材料」且名称匹配材料库时，填充单位与单价
+function applyMaterialLink(nameInput, tr) {
+    const type = tr.querySelector(".item-type").value;
+    const name = nameInput.value.trim();
+    if (type !== "material" || !name) return;
+    const key = Object.keys(materialMap).find((k) => k.includes(name));
+    if (!key) return;
+    const mat = materialMap[key];
+    tr.querySelector(".item-unit").value = mat.unit;
+    tr.querySelector(".item-price").value = mat.price;
+    const idx = tr.id.split("-")[1];
+    updateRowSubtotal(idx);
 }
 
 function updateRowSubtotal(idx) {
@@ -137,7 +180,7 @@ function renderPieChart(data) {
         byType[item.type] = (byType[item.type] || 0) + item.subtotal;
     });
 
-    const order = ["material", "labor", "utility", "processing_out", "processing_own", "other"];
+    const order = ["material", "labor", "utility", "processing_out", "processing_own", "mold", "freight", "packaging", "loss", "other"];
     const entries = order
         .filter((t) => byType[t] > 0)
         .map((t) => ({ type: t, label: ITEM_TYPES[t], value: byType[t] }));
@@ -201,6 +244,65 @@ function renderPieChart(data) {
             },
         },
     });
+}
+
+// 加载材料库，供「原材料」行做价格联动（自动填充单位与单价）
+async function loadMaterials() {
+    try {
+        const res = await fetch("/api/materials?sort=name");
+        if (!res.ok) return;
+        const materials = await res.json();
+        const dl = document.getElementById("materialOptions");
+        const seen = new Set();
+        materials.forEach((m) => {
+            const key = `${m.name} ${m.spec} (${m.region})`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            materialMap[key] = { unit: m.unit, price: m.current_price };
+            const opt = document.createElement("option");
+            opt.value = key;
+            dl.appendChild(opt);
+        });
+    } catch (e) {
+        console.warn("材料库加载失败", e);
+    }
+}
+
+// 加载预设成本模板到下拉框
+async function loadTemplates() {
+    try {
+        const res = await fetch("/api/calculator/templates");
+        if (!res.ok) return;
+        const templates = await res.json();
+        const sel = document.getElementById("templateSelect");
+        templates.forEach((t) => {
+            const opt = document.createElement("option");
+            opt.value = t.id;
+            opt.textContent = t.name;
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        console.warn("模板加载失败", e);
+    }
+}
+
+// 按选中模板填充成本明细行
+async function loadTemplate() {
+    const id = document.getElementById("templateSelect").value;
+    if (!id) return alert("请先选择一个模板");
+    try {
+        const res = await fetch("/api/calculator/templates");
+        if (!res.ok) throw new Error("加载模板失败");
+        const templates = await res.json();
+        const tpl = templates.find((t) => String(t.id) === id);
+        if (!tpl) return alert("模板不存在");
+
+        document.getElementById("costItems").innerHTML = "";
+        rowIndex = 0;
+        (tpl.items || []).forEach((item) => addRow(item.item_type, item));
+    } catch (e) {
+        alert(e.message);
+    }
 }
 
 function clearAll() {

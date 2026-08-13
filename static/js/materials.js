@@ -19,16 +19,18 @@ window.redrawCharts = () => {
 async function searchMaterials() {
     const q = document.getElementById("searchInput").value.trim();
     const category = document.getElementById("categoryFilter").value;
+    const region = document.getElementById("regionFilter").value;
     const sort = document.getElementById("sortBy").value;
 
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (category) params.set("category", category);
+    if (region) params.set("region", region);
     params.set("sort", sort);
 
     const tbody = document.getElementById("materialsTable");
     const countEl = document.getElementById("resultCount");
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> 查询中...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> 查询中...</td></tr>';
 
     try {
         const res = await fetch(`/api/materials?${params}`);
@@ -37,7 +39,7 @@ async function searchMaterials() {
 
         countEl.textContent = `共 ${materials.length} 条`;
         if (!materials.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">未找到匹配材料</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">未找到匹配材料</td></tr>';
             return;
         }
 
@@ -50,6 +52,7 @@ async function searchMaterials() {
                     <td><span class="badge-soft">${m.category_name}</span></td>
                     <td><strong>${m.name}</strong></td>
                     <td class="text-muted">${m.spec}</td>
+                    <td><span class="badge-soft">${m.region}</span></td>
                     <td>${m.unit}</td>
                     <td><strong style="font-variant-numeric: tabular-nums">${m.currency} ${m.current_price.toFixed(2)}</strong></td>
                     <td><span class="${cls} fw-bold">${arrow}</span></td>
@@ -69,7 +72,7 @@ async function searchMaterials() {
             btn.addEventListener("click", () => loadHistory(btn));
         });
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">加载失败: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">加载失败: ${e.message}</td></tr>`;
     }
 }
 

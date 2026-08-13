@@ -14,18 +14,24 @@ def page() -> str:
     session = get_session()
     try:
         categories = session.query(MaterialCategory).order_by(MaterialCategory.sort_order).all()
-        return render_template("materials.html", categories=[c.to_dict() for c in categories])
+        regions = [r[0] for r in session.query(Material.region).distinct().order_by(Material.region).all()]
+        return render_template(
+            "materials.html",
+            categories=[c.to_dict() for c in categories],
+            regions=regions,
+        )
     finally:
         session.close()
 
 
 @materials_bp.route("/api/materials")
 def api_list():
-    """Search/filter materials. Query params: q, category, sort."""
+    """Search/filter materials. Query params: q, category, region, sort."""
     session = get_session()
     try:
         q = request.args.get("q", "").strip()
         category = request.args.get("category", "").strip()
+        region = request.args.get("region", "").strip()
         sort = request.args.get("sort", "name")  # name / price_asc / price_desc / date
 
         query = session.query(Material)
@@ -36,6 +42,8 @@ def api_list():
             )
         if category:
             query = query.join(MaterialCategory).filter(MaterialCategory.name == category)
+        if region:
+            query = query.filter(Material.region == region)
 
         if sort == "price_asc":
             query = query.order_by(Material.current_price.asc())

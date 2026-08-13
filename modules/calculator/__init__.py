@@ -13,6 +13,10 @@ ITEM_TYPES = {
     "utility": "水电气",
     "processing_out": "委外加工",
     "processing_own": "自有产线",
+    "mold": "模具摊销",
+    "freight": "运费",
+    "packaging": "包装费",
+    "loss": "损耗",
     "other": "其他费用",
 }
 
