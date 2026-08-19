@@ -146,10 +146,11 @@ class Certification(Base):
     target_country = Column(String(64), nullable=False)
     cert_name = Column(String(256), nullable=False)
     cert_body = Column(String(256), default="")
-    is_mandatory = Column(Boolean, default=True)
+    is_mandatory = Column(Boolean, default=True)  # True=强制性认证（没有卖不了）；False=附加值认证（办了卖更多钱）
     estimated_cost = Column(String(128), default="")
     lead_time_days = Column(Integer, default=30)
     description = Column(Text, default="")
+    value_benefit = Column(Text, default="")  # 附加值认证的价值说明（提升溢价/进入更高端渠道）
     reference_url = Column(String(512), default="")
 
     def to_dict(self) -> dict:
@@ -163,5 +164,6 @@ class Certification(Base):
             "estimated_cost": self.estimated_cost,
             "lead_time_days": self.lead_time_days,
             "description": self.description,
+            "value_benefit": self.value_benefit,
             "reference_url": self.reference_url,
         }

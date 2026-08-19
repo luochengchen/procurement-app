@@ -135,6 +135,17 @@ def seed_certifications(session) -> None:
     if session.query(Certification).first():
         return  # Already seeded
 
+    # 附加值认证的价值说明（认证名 → 办了能多卖钱/进更高端渠道）
+    VALUE_BENEFITS = {
+        "OEKO-TEX Standard 100": "可打环保标签，进入欧盟高端纺织品渠道，产品溢价约 15-30%",
+        "UL": "美国 Walmart/Costco 等零售商的通行证，显著提升议价能力与渠道准入",
+        "JIS": "日本市场认可度高的品质标志，可溢价约 10-20%",
+        "SG认证": "日本消费者高度认可的安全标志，可进入高端运动零售渠道",
+        "AS 1663": "进入澳大利亚健身器材市场的加分项，提升专业买家信任度",
+        "AS 4688": "澳大利亚户外家具高端渠道认可，可支撑更高定价",
+        "METI": "日本市场合规加分项，利于与日方买家建立长期合作",
+    }
+
     certs = [
         # === 欧盟 ===
         ("电子产品", "欧盟", "CE", "制造商自我声明/公告机构", True, "¥3,000-50,000", 30, "欧盟强制性安全认证"),
@@ -201,6 +212,7 @@ def seed_certifications(session) -> None:
             estimated_cost=cost,
             lead_time_days=lead_days,
             description=desc,
+            value_benefit=VALUE_BENEFITS.get(cert_name, ""),
         ))
 
     session.commit()

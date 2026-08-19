@@ -68,12 +68,17 @@ searchBtn.addEventListener("click", async () => {
 
         if (data.note) searchNote.textContent = data.note;
 
-        // 工厂匹配联动：跳转到工厂模块，按识别关键词匹配可生产的工厂
+        // 联动跳转：按识别关键词匹配可生产工厂 / 查询该产品所需认证
         const kw = data.keyword || "";
         const matchBar = kw
-            ? `<a href="/factory?q=${encodeURIComponent(kw)}" class="btn btn-outline-primary w-100 mb-3">
-                 <i class="bi bi-buildings me-1"></i> 匹配可生产该产品的工厂
-               </a>`
+            ? `<div class="d-grid gap-2 mb-3">
+                 <a href="/factory?q=${encodeURIComponent(kw)}" class="btn btn-outline-primary">
+                   <i class="bi bi-buildings me-1"></i> 匹配可生产该产品的工厂
+                 </a>
+                 <a href="/certification?q=${encodeURIComponent(kw)}" class="btn btn-outline-success">
+                   <i class="bi bi-patch-check me-1"></i> 查询该产品的认证要求（强制 / 附加值）
+                 </a>
+               </div>`
             : "";
 
         resultsContainer.innerHTML = matchBar + data.results
