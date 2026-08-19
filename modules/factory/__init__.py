@@ -70,12 +70,18 @@ FACTORIES = [
         "employees": employees,
         "factory_area": area,
         "annual_revenue": revenue,  # 单位：万元
+        "reg_capital": "",
+        "business_scope": "",
+        "legal_person": "",
+        "established": "",
+        "credit_code": "",
         "main_products": products,
         "processes": processes,
         "certifications": certs,
         "export_markets": markets,
         "verified": True,
-        "source": "1688",
+        "source": "本地模拟",
+        "is_external": False,
     }
     for i, (name, industry, region, employees, area, revenue,
             products, processes, certs, markets) in enumerate(_FACTORY_ROWS, 1)
@@ -104,15 +110,8 @@ def page() -> str:
     return render_template("factory.html", regions=regions, industries=industries)
 
 
-@factory_bp.route("/api/factory")
-def api_search():
-    """Search/match factories. Query params: q, region, industry, scale, sort."""
-    q = request.args.get("q", "").strip()
-    region = request.args.get("region", "").strip()
-    industry = request.args.get("industry", "").strip()
-    scale = request.args.get("scale", "").strip()  # small / medium / large
-    sort = request.args.get("sort", "revenue_desc")  # revenue_desc / employees_desc / name
-
+def _filter_mock(q: str, region: str, industry: str, scale: str, sort: str) -> list[dict]:
+    """本地模拟数据的筛选/排序逻辑（保留完整四字段演示能力）。"""
     results = []
     for f in FACTORIES:
         if q and not _match_text(f, q):
@@ -139,8 +138,47 @@ def api_search():
         results.sort(key=lambda f: f["name"])
     else:
         results.sort(key=lambda f: f["annual_revenue"], reverse=True)
+    return results
 
-    return jsonify({"total": len(results), "results": results})
+
+def _sort_external(results: list[dict], sort: str) -> list[dict]:
+    """外部工商数据排序：年销售额/员工数缺失，仅支持按厂名，其余保持相关度顺序。"""
+    if sort == "name":
+        results.sort(key=lambda f: f["name"])
+    return results
+
+
+@factory_bp.route("/api/factory")
+def api_search():
+    """Search/match factories. Query params: q, region, industry, scale, sort.
+
+    数据源降级链：天眼查（主，需 token）→ Apizero（保底，匿名）→ 本地模拟（兜底）。
+    """
+    q = request.args.get("q", "").strip()
+    region = request.args.get("region", "").strip()
+    industry = request.args.get("industry", "").strip()
+    scale = request.args.get("scale", "").strip()  # small / medium / large
+    sort = request.args.get("sort", "revenue_desc")  # revenue_desc / employees_desc / name
+
+    # 优先真实外部数据（仅当有关键词时，外部 API 按关键词搜索企业）
+    if q:
+        try:
+            from modules.factory.service import search_external
+            external, source = search_external(q)
+            if external:
+                for i, f in enumerate(external):
+                    f["id"] = 1000 + i  # 稳定 id，供前端详情索引
+                results = _sort_external(external, sort)
+                return jsonify({
+                    "total": len(results),
+                    "results": results,
+                    "data_source": source,
+                })
+        except Exception:
+            pass  # 外部全部失败 → 降级本地模拟
+
+    results = _filter_mock(q, region, industry, scale, sort)
+    return jsonify({"total": len(results), "results": results, "data_source": "本地模拟"})
 
 
 @factory_bp.route("/api/factory/<int:factory_id>")

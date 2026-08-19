@@ -83,14 +83,15 @@
     </div>
 </div>
 
-<!-- 外部API提示 -->
+<!-- 数据源说明 -->
 <div class="alert alert-info mt-3 d-flex align-items-center">
     <i class="bi bi-info-circle-fill me-2"></i>
     <div>
-        <strong>工厂数据接口预留</strong> —
-        当前为内置模拟数据。真实工厂数据请使用
-        <code>GET /api/factory/external?product=&region=&industry=</code>
-        （当前返回 501，计划接入 1688 工厂 API 与工商数据 API）
+        <strong>数据源</strong> —
+        输入关键词时优先调用真实工商数据（天眼查 → Apizero），未配置或调用失败时回退本地演示数据。
+        配置环境变量 <code>TIANYANCHA_TOKEN</code>（主，免费 500 次/天）或
+        <code>APIZERO_API_KEY</code>（保底，匿名 20 次/天）即可接入真实数据。
+        注：工商数据不含「年销售额/员工规模」，仅 1688 工厂 API 提供（需企业资质）。
     </div>
 </div>
 

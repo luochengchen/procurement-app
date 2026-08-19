@@ -26,6 +26,10 @@ IMAGE_SEARCH_API_KEY = os.environ.get("IMAGE_SEARCH_API_KEY", "")
 CERTIFICATION_API_URL = os.environ.get("CERTIFICATION_API_URL", "")
 CERTIFICATION_API_KEY = os.environ.get("CERTIFICATION_API_KEY", "")
 
+# Factory data API（主：天眼查；保底：Apizero）
+TIANYANCHA_TOKEN = os.environ.get("TIANYANCHA_TOKEN", "")  # 天眼查开放平台 token，免费 500 次/天
+APIZERO_API_KEY = os.environ.get("APIZERO_API_KEY", "")    # Apizero 可选，匿名 20 次/天保底
+
 # Currency
 DEFAULT_CURRENCY = "CNY"
 SUPPORTED_CURRENCIES = ["CNY", "USD", "EUR", "JPY", "KRW"]
