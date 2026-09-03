@@ -11,18 +11,32 @@
 
 <!-- 预设模板 -->
 <div class="row mb-3">
-    <div class="col-lg-7">
+    <div class="col-12">
         <div class="card">
             <div class="card-body d-flex align-items-center gap-2 flex-wrap">
                 <i class="bi bi-stars text-primary"></i>
                 <label class="form-label mb-0 me-1">预设行业模板</label>
-                <select class="form-select form-select-sm" id="templateSelect" style="max-width: 260px">
+                <select class="form-select form-select-sm" id="templateSelect" style="max-width: 240px">
                     <option value="">选择模板...</option>
                 </select>
-                <button class="btn btn-sm btn-primary" id="loadTemplateBtn">
+                <button class="btn btn-sm btn-primary" id="loadTemplateBtn" title="按选中模板填充下方表格">
                     <i class="bi bi-box-arrow-in-down"></i> 加载模板
                 </button>
-                <small class="text-muted">加载后按需修改单价/数量</small>
+                <button class="btn btn-sm btn-outline-danger" id="deleteTemplateBtn" title="删除选中的模板">
+                    <i class="bi bi-trash"></i> 删除
+                </button>
+                <div class="vr d-none d-md-block"></div>
+                <button class="btn btn-sm btn-outline-primary" id="importExcelBtn" title="从 Excel 导入成本明细（含公式自动重算小计）">
+                    <i class="bi bi-file-earmark-excel"></i> 导入 Excel
+                </button>
+                <input type="file" id="excelInput" accept=".xlsx,.xlsm" class="d-none">
+                <a class="btn btn-sm btn-outline-secondary" href="/api/calculator/templates/example" download title="下载 Excel 模板示例">
+                    <i class="bi bi-download"></i> 下载示例
+                </a>
+                <button class="btn btn-sm btn-success" id="saveTemplateBtn" title="将当前表格命名后保存为预设模板">
+                    <i class="bi bi-save"></i> 保存为模板
+                </button>
+                <small class="text-muted">导入 Excel / 手动填写后，命名保存即可进入预设模板</small>
             </div>
         </div>
     </div>
@@ -91,6 +105,34 @@
                 <div id="breakdownTable">
                     <p class="text-muted">点击"计算"查看费用构成分析</p>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 保存模板弹窗 -->
+<div class="modal fade" id="saveTemplateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-save"></i> 保存为预设模板</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">模板名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="templateNameInput" placeholder="如：注塑件成本模板">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">备注（可选）</label>
+                    <input type="text" class="form-control" id="templateDescInput" placeholder="适用场景说明">
+                </div>
+                <div class="text-muted small">将保存当前表格中的 <span id="saveRowCount" class="fw-semibold">0</span> 行成本明细。</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirmSaveBtn">
+                    <i class="bi bi-save"></i> 保存
+                </button>
             </div>
         </div>
     </div>

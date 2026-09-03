@@ -20,6 +20,11 @@ const TYPE_SERIES = {
 // 材料价格联动：name → {unit, price}
 let materialMap = {};
 
+// 模板缓存 + 保存弹窗
+let templateCache = [];
+let saveModal = null;
+let pendingSaveName = ""; // Excel 导入后建议的模板名
+
 // 主题切换重绘饼图
 window.redrawCharts = () => {
     if (lastPieData) renderPieChart(lastPieData);
@@ -31,6 +36,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("clearBtn").addEventListener("click", clearAll);
     document.getElementById("exportBtn").addEventListener("click", exportResult);
     document.getElementById("loadTemplateBtn").addEventListener("click", loadTemplate);
+    document.getElementById("saveTemplateBtn").addEventListener("click", openSaveModal);
+    document.getElementById("confirmSaveBtn").addEventListener("click", saveTemplate);
+    document.getElementById("deleteTemplateBtn").addEventListener("click", deleteTemplate);
+    document.getElementById("importExcelBtn").addEventListener("click", () => document.getElementById("excelInput").click());
+    document.getElementById("excelInput").addEventListener("change", (e) => importExcel(e.target.files[0]));
+
+    saveModal = new bootstrap.Modal(document.getElementById("saveTemplateModal"));
 
     loadTemplates();
     loadMaterials();
@@ -268,14 +280,15 @@ async function loadMaterials() {
     }
 }
 
-// 加载预设成本模板到下拉框
+// 加载预设成本模板到下拉框（并缓存，供加载/删除使用）
 async function loadTemplates() {
     try {
         const res = await fetch("/api/calculator/templates");
         if (!res.ok) return;
-        const templates = await res.json();
+        templateCache = await res.json();
         const sel = document.getElementById("templateSelect");
-        templates.forEach((t) => {
+        sel.innerHTML = '<option value="">选择模板...</option>';
+        templateCache.forEach((t) => {
             const opt = document.createElement("option");
             opt.value = t.id;
             opt.textContent = t.name;
@@ -287,21 +300,123 @@ async function loadTemplates() {
 }
 
 // 按选中模板填充成本明细行
-async function loadTemplate() {
+function loadTemplate() {
     const id = document.getElementById("templateSelect").value;
     if (!id) return alert("请先选择一个模板");
+    const tpl = templateCache.find((t) => String(t.id) === id);
+    if (!tpl) return alert("模板不存在");
+
+    document.getElementById("costItems").innerHTML = "";
+    rowIndex = 0;
+    (tpl.items || []).forEach((item) => addRow(item.item_type, item));
+}
+
+// 收集当前表格的所有成本明细
+function collectItems() {
+    const items = [];
+    document.querySelectorAll("#costItems tr").forEach((row) => {
+        items.push({
+            type: row.querySelector(".item-type").value,
+            name: row.querySelector(".item-name").value || "未命名",
+            unit: row.querySelector(".item-unit").value || "pcs",
+            unit_price: parseFloat(row.querySelector(".item-price").value) || 0,
+            quantity: parseFloat(row.querySelector(".item-qty").value) || 1,
+        });
+    });
+    return items;
+}
+
+// 打开保存弹窗，预填名称
+function openSaveModal() {
+    const items = collectItems();
+    if (!items.length) return alert("请先添加成本明细");
+    document.getElementById("saveRowCount").textContent = items.length;
+    document.getElementById("templateNameInput").value = pendingSaveName || "";
+    document.getElementById("templateDescInput").value = "";
+    saveModal.show();
+}
+
+// 保存当前明细为预设模板
+async function saveTemplate() {
+    const name = document.getElementById("templateNameInput").value.trim();
+    if (!name) return alert("请填写模板名称");
+    const items = collectItems();
+    if (!items.length) return alert("请先添加成本明细");
+
+    const btn = document.getElementById("confirmSaveBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 保存中...';
     try {
-        const res = await fetch("/api/calculator/templates");
-        if (!res.ok) throw new Error("加载模板失败");
-        const templates = await res.json();
-        const tpl = templates.find((t) => String(t.id) === id);
-        if (!tpl) return alert("模板不存在");
+        const res = await fetch("/api/calculator/templates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name,
+                description: document.getElementById("templateDescInput").value.trim(),
+                items,
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "保存失败");
+
+        saveModal.hide();
+        pendingSaveName = "";
+        await loadTemplates();
+        document.getElementById("templateSelect").value = String(data.id);
+        alert(`模板「${data.name}」已保存到预设模板`);
+    } catch (e) {
+        alert(`保存失败: ${e.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save"></i> 保存';
+    }
+}
+
+// 删除选中的模板
+async function deleteTemplate() {
+    const id = document.getElementById("templateSelect").value;
+    if (!id) return alert("请先选择一个模板");
+    const tpl = templateCache.find((t) => String(t.id) === id);
+    if (!tpl) return alert("模板不存在");
+    if (!confirm(`确定删除模板「${tpl.name}」吗？此操作不可恢复。`)) return;
+    try {
+        const res = await fetch(`/api/calculator/templates/${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "删除失败");
+        await loadTemplates();
+    } catch (e) {
+        alert(`删除失败: ${e.message}`);
+    }
+}
+
+// 导入 Excel：上传 → 后端解析 → 填入表格 → 打开保存弹窗
+async function importExcel(file) {
+    if (!file) return;
+    if (!/\.(xlsx|xlsm)$/i.test(file.name)) return alert("请选择 .xlsx 或 .xlsm 格式的 Excel 文件");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const btn = document.getElementById("importExcelBtn");
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 解析中...';
+    try {
+        const res = await fetch("/api/calculator/templates/import", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "导入失败");
 
         document.getElementById("costItems").innerHTML = "";
         rowIndex = 0;
-        (tpl.items || []).forEach((item) => addRow(item.item_type, item));
+        data.items.forEach((item) => addRow(item.type, item));
+        pendingSaveName = data.suggested_name || "";
+        openSaveModal();
     } catch (e) {
         alert(e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+        document.getElementById("excelInput").value = "";
     }
 }
 
