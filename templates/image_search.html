@@ -51,6 +51,78 @@
         </div>
     </div>
 </div>
+
+<!-- 工厂筛选：复用真实工厂筛选（地区/行业/规模/排序），识图识别关键词自动带入 -->
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-buildings me-1"></i> 工厂筛选 · 匹配可生产该产品的工厂</span>
+        <small class="text-muted" id="imgFactoryCount"></small>
+    </div>
+    <div class="card-body pb-0">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">产品 / 关键词</label>
+                <input type="text" class="form-control" id="imgFactoryQ" placeholder="如：螺丝、注塑件、跑步机...">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">地区</label>
+                <select class="form-select" id="imgFactoryRegion"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">行业</label>
+                <select class="form-select" id="imgFactoryIndustry"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">规模</label>
+                <select class="form-select" id="imgFactoryScale"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">排序</label>
+                <div class="input-group">
+                    <select class="form-select" id="imgFactorySort">
+                        <option value="revenue_desc">年销售额 ↓</option>
+                        <option value="employees_desc">员工规模 ↓</option>
+                        <option value="name">厂名</option>
+                    </select>
+                    <button class="btn btn-primary" id="imgFactoryBtn" title="筛选工厂">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>工厂名称</th>
+                    <th>行业</th>
+                    <th>地址</th>
+                    <th>规模</th>
+                    <th>年销售额</th>
+                    <th>可生产产品</th>
+                    <th class="text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody id="imgFactoryTable">
+                <tr><td colspan="7" class="text-center text-muted py-4">识图后关键词自动带入；也可直接输入关键词点搜索筛选工厂</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 工厂详情 Modal -->
+<div class="modal fade" id="imgFactoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="background: var(--surface); color: var(--ink)">
+            <div class="modal-header border-bottom" style="border-color: var(--border) !important">
+                <h6 class="modal-title" id="imgFactoryTitle">工厂详情</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="imgFactoryBody"></div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}

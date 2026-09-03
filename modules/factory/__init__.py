@@ -181,6 +181,20 @@ def api_search():
     return jsonify({"total": len(results), "results": results, "data_source": "本地模拟"})
 
 
+@factory_bp.route("/api/factory/filters")
+def api_filters():
+    """返回工厂筛选的可选项（地区/行业/规模），供嵌入页/识图页动态填充下拉框。"""
+    return jsonify({
+        "regions": sorted({f["region"] for f in FACTORIES}),
+        "industries": sorted({f["industry"] for f in FACTORIES}),
+        "scales": [
+            {"value": "small", "label": "小型（<100人）"},
+            {"value": "medium", "label": "中型（100-300人）"},
+            {"value": "large", "label": "大型（>300人）"},
+        ],
+    })
+
+
 @factory_bp.route("/api/factory/<int:factory_id>")
 def api_detail(factory_id: int):
     """Get a single factory's full profile."""
