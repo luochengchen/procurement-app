@@ -34,6 +34,8 @@ def seed_categories(session) -> dict[str, int]:
 PLASTIC_REGIONS = {"余姚": 1.00, "东莞": 1.04, "天津": 1.02}
 # 五金配件主要市场
 HARDWARE_REGIONS = {"永康": 1.00, "东莞": 1.05, "温州": 1.02}
+# 金属材料主要现货市场（有色/钢材期现联动市场）
+METAL_REGIONS = {"佛山": 1.00, "上海": 1.03, "天津": 1.02}
 
 # 塑料原料：(name, spec, unit, 基准价, 趋势)
 PLASTICS = [
@@ -71,6 +73,20 @@ HARDWARE = [
     ("气撑杆 300N", "400mm", "pcs", 15.00, "up"),
 ]
 
+# 金属材料（板材/型材/棒料，参考长江有色/佛山市场现货价）：(name, spec, unit, 基准价, 趋势)
+METALS = [
+    ("冷轧板 SPCC", "1.0mm×1250×2500", "吨", 5600.00, "down"),
+    ("镀锌板 DX51D", "0.8mm 无花", "吨", 5900.00, "stable"),
+    ("铝锭 A00", "GB/T 1196", "吨", 20500.00, "up"),
+    ("铝合金 ADC12", "压铸锭", "吨", 19800.00, "up"),
+    ("6063铝型材", "氧化银白", "吨", 24500.00, "stable"),
+    ("铜棒 H59", "φ25mm", "吨", 52000.00, "up"),
+    ("电解铜板", "1# 标准阴极铜", "吨", 69000.00, "up"),
+    ("不锈钢板 304", "2.0mm 2B", "吨", 14800.00, "down"),
+    ("圆钢 45#", "φ40mm", "吨", 4200.00, "stable"),
+    ("镀锌铁丝", "Φ1.2mm", "kg", 5.20, "down"),
+]
+
 # 其他品类（单地区「全国」）：(category, name, spec, unit, price, trend)
 OTHERS = [
     ("电子元器件", "STM32F103C8T6", "LQFP48", "pcs", 8.50, "up"),
@@ -78,17 +94,46 @@ OTHERS = [
     ("电子元器件", "PCB 双面板 FR-4", "1.6mm 1oz", "cm²", 0.08, "stable"),
     ("电子元器件", "USB-C 连接器 16P", "SMT 沉板", "pcs", 0.85, "down"),
     ("电子元器件", "18650锂电池", "3.7V 2600mAh", "pcs", 12.50, "up"),
+    ("包装材料", "五层重型瓦楞纸箱", "60×50×40cm", "pcs", 5.80, "up"),
     ("包装材料", "三层瓦楞纸箱", "50×40×30cm", "pcs", 3.50, "stable"),
+    ("包装材料", "彩盒", "250g 白卡覆膜", "pcs", 1.20, "stable"),
+    ("包装材料", "牛皮纸盒", "300g 双瓦", "pcs", 1.80, "down"),
+    ("包装材料", "纸护角", "50×50×1500mm", "根", 1.50, "stable"),
+    ("包装材料", "蜂窝纸板", "5mm×1200×2400", "张", 28.00, "up"),
     ("包装材料", "气泡袋", "40×50cm 大泡", "pcs", 0.45, "down"),
     ("包装材料", "PE缠绕膜", "50cm×300m", "卷", 55.00, "stable"),
     ("包装材料", "透明胶带", "48mm×100m", "卷", 3.80, "stable"),
     ("包装材料", "EPE珍珠棉", "3mm×1m×2m", "张", 12.00, "up"),
+    ("包装材料", "气泡膜", "100m×1m", "卷", 42.00, "stable"),
+    ("包装材料", "干燥剂", "5g 硅胶", "千袋", 45.00, "stable"),
+    ("包装材料", "打包带", "PP 12mm×1500m", "卷", 48.00, "stable"),
     ("纺织面料", "全棉平纹布 40S", "150cm 幅宽", "米", 15.00, "stable"),
     ("纺织面料", "涤纶牛津布 600D", "150cm 幅宽", "米", 8.50, "down"),
     ("纺织面料", "尼龙塔丝隆 210T", "150cm 幅宽", "米", 10.00, "stable"),
     ("纺织面料", "帆布 16安", "150cm 幅宽", "米", 22.00, "up"),
     ("纺织面料", "摇粒绒 280g", "160cm 幅宽", "米", 18.00, "stable"),
 ]
+
+
+# 近 12 周价格走势：终点为当前价，起点按趋势高低错开（up 起点低→上升形态，
+# down 起点高→回落形态，stable 基本走平），叠加小幅确定性噪声让折线自然。
+def _history_points(price: float, trend: str) -> list[float]:
+    import random
+    rng = random.Random(int(price * 100))
+    if trend == "up":
+        start, end = 0.94, 1.0
+    elif trend == "down":
+        start, end = 1.06, 1.0
+    else:
+        start, end = 1.02, 1.0
+    points = []
+    for i in range(12):
+        t = i / 11.0
+        val = price * (start + (end - start) * t)
+        val *= 1 + rng.uniform(-0.02, 0.02)
+        points.append(round(val, 2))
+    points[-1] = round(price, 2)  # 保证最新一期 = 当前价
+    return points
 
 
 def _add_material(session, cat_id, name, spec, unit, region, price, pdate, source, trend):
@@ -101,9 +146,11 @@ def _add_material(session, cat_id, name, spec, unit, region, price, pdate, sourc
     )
     session.add(mat)
     session.flush()
-    session.add(PriceHistory(material_id=mat.id, price=round(price * 0.94, 2), recorded_date=pdate - timedelta(days=30)))
-    session.add(PriceHistory(material_id=mat.id, price=round(price * 0.97, 2), recorded_date=pdate - timedelta(days=15)))
-    session.add(PriceHistory(material_id=mat.id, price=price, recorded_date=pdate))
+    for i, p in enumerate(_history_points(price, trend)):
+        session.add(PriceHistory(
+            material_id=mat.id, price=p,
+            recorded_date=pdate - timedelta(days=7 * (11 - i)),  # i=0 最旧(77天前) → i=11 今天
+        ))
 
 
 def seed_materials(session, cat_ids: dict[str, int]) -> None:
@@ -121,6 +168,12 @@ def seed_materials(session, cat_ids: dict[str, int]) -> None:
         for region, factor in HARDWARE_REGIONS.items():
             _add_material(session, cat_ids["五金配件"], name, spec, unit, region,
                           round(base * factor, 2), today - timedelta(days=1), "1688五金市场", trend)
+
+    # 金属材料：3 个现货市场
+    for name, spec, unit, base, trend in METALS:
+        for region, factor in METAL_REGIONS.items():
+            _add_material(session, cat_ids["金属材料"], name, spec, unit, region,
+                          round(base * factor, 2), today - timedelta(days=1), "长江有色/佛山现货", trend)
 
     # 其他品类：单地区
     for cat_name, name, spec, unit, price, trend in OTHERS:

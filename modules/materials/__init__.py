@@ -54,8 +54,30 @@ def api_list():
         else:
             query = query.order_by(Material.name.asc())
 
-        materials = query.limit(100).all()
-        return jsonify([m.to_dict() for m in materials])
+        materials = query.limit(500).all()
+        ids = [m.id for m in materials]
+
+        # 一次性取这些材料的最近走势（升序，每材料保留末 6 期），避免 N+1 查询
+        spark: dict[int, list[float]] = {}
+        if ids:
+            rows = (
+                session.query(PriceHistory.material_id, PriceHistory.price)
+                .filter(PriceHistory.material_id.in_(ids))
+                .order_by(PriceHistory.recorded_date.asc())
+                .all()
+            )
+            for mid, price in rows:
+                bucket = spark.setdefault(mid, [])
+                bucket.append(price)
+                if len(bucket) > 6:
+                    bucket.pop(0)
+
+        result = []
+        for m in materials:
+            d = m.to_dict()
+            d["spark"] = spark.get(m.id, [])
+            result.append(d)
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:

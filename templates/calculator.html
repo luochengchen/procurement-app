@@ -137,6 +137,24 @@
         </div>
     </div>
 </div>
+
+<!-- 材料价格走势弹窗：原材料行命中材料库时显示折线图 -->
+<div class="modal fade" id="calcTrendModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="background: var(--surface); color: var(--ink)">
+            <div class="modal-header border-bottom" style="border-color: var(--border) !important">
+                <h6 class="modal-title" id="calcTrendTitle">材料价格走势</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="chart-container" style="height: 280px">
+                    <canvas id="calcTrendChart"></canvas>
+                </div>
+                <p class="text-muted small mt-2 mb-0">价格取自材料库历史记录，作为成本核算的参考依据。</p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}

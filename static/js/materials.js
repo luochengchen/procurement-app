@@ -11,6 +11,24 @@ document.addEventListener("DOMContentLoaded", () => {
     searchMaterials();
 });
 
+// 内联迷你走势（SVG sparkline），颜色继承趋势 class 的 currentColor
+function sparkSvg(values) {
+    if (!values || values.length < 2) return "";
+    const w = 72, h = 20, pad = 2;
+    const min = Math.min(...values), max = Math.max(...values);
+    const span = max - min || 1;
+    const pts = values
+        .map((v, i) => {
+            const x = pad + (i * (w - pad * 2)) / (values.length - 1);
+            const y = h - pad - ((v - min) / span) * (h - pad * 2);
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        })
+        .join(" ");
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none"
+        stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">
+        <polyline points="${pts}"/></svg>`;
+}
+
 // 主题切换重绘
 window.redrawCharts = () => {
     if (historyChart) renderHistoryChart(historyChart._data);
@@ -55,12 +73,15 @@ async function searchMaterials() {
                     <td><span class="badge-soft">${m.region}</span></td>
                     <td>${m.unit}</td>
                     <td><strong style="font-variant-numeric: tabular-nums">${m.currency} ${m.current_price.toFixed(2)}</strong></td>
-                    <td><span class="${cls} fw-bold">${arrow}</span></td>
+                    <td>
+                        <span class="${cls} fw-bold me-1">${arrow}</span>
+                        <span class="${cls}" title="近 6 期走势">${sparkSvg(m.spark)}</span>
+                    </td>
                     <td class="text-muted">${m.price_date}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary view-history"
                             data-id="${m.id}" data-name="${m.name}" data-unit="${m.unit}">
-                            <i class="bi bi-graph-up"></i>
+                            <i class="bi bi-graph-up"></i> 走势
                         </button>
                     </td>
                 </tr>`;

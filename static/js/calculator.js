@@ -25,10 +25,14 @@ let templateCache = [];
 let saveModal = null;
 let pendingSaveName = ""; // Excel 导入后建议的模板名
 
-// 主题切换重绘饼图
+// 主题切换重绘饼图 + 材料走势图
 window.redrawCharts = () => {
     if (lastPieData) renderPieChart(lastPieData);
+    if (calcTrendChart && calcTrendChart._data) drawCalcTrend(calcTrendChart._data);
 };
+
+let calcTrendChart = null;   // 材料价格走势折线
+let trendModal = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("addRowBtn").addEventListener("click", () => addRow("other"));
@@ -43,6 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("excelInput").addEventListener("change", (e) => importExcel(e.target.files[0]));
 
     saveModal = new bootstrap.Modal(document.getElementById("saveTemplateModal"));
+    trendModal = new bootstrap.Modal(document.getElementById("calcTrendModal"));
 
     loadTemplates();
     loadMaterials();
@@ -64,7 +69,11 @@ function addRow(defaultType = "other", data = null) {
     tr.id = `row-${idx}`;
     tr.innerHTML = `
         <td><select class="form-select form-select-sm item-type">${typeOptions}</select></td>
-        <td><input type="text" class="form-control form-control-sm item-name" placeholder="项目名称" list="materialOptions"></td>
+        <td><div class="d-flex align-items-center gap-1">
+            <input type="text" class="form-control form-control-sm item-name flex-grow-1" placeholder="项目名称" list="materialOptions">
+            <button type="button" class="btn btn-sm btn-outline-secondary mat-trend d-none"
+                title="查看该材料价格走势" style="line-height:1"><i class="bi bi-graph-up"></i></button>
+        </div></td>
         <td><input type="text" class="form-control form-control-sm item-unit" value="pcs"></td>
         <td><input type="number" class="form-control form-control-sm item-price" value="0" min="0" step="0.01"></td>
         <td><input type="number" class="form-control form-control-sm item-qty" value="1" min="0.01" step="0.01"></td>
@@ -93,20 +102,41 @@ function addRow(defaultType = "other", data = null) {
     nameInput.addEventListener("change", () => applyMaterialLink(nameInput, tr));
     typeSelect.addEventListener("change", () => applyMaterialLink(nameInput, tr));
 
+    // 价格走势按钮：命中材料库时弹出该材料折线图
+    tr.querySelector(".mat-trend").addEventListener("click", () => {
+        const id = tr.dataset.matId;
+        if (!id) return;
+        const label = tr.dataset.matName || nameInput.value.trim();
+        const unit = tr.querySelector(".item-unit").value || "pcs";
+        showMaterialTrend(id, label, unit);
+    });
+
     updateRowSubtotal(idx);
     return tr;
 }
 
-// 材料价格联动：当类型为「原材料」且名称匹配材料库时，填充单位与单价
+// 材料价格联动：当类型为「原材料」且名称匹配材料库时，填充单位与单价，并显示走势按钮
 function applyMaterialLink(nameInput, tr) {
     const type = tr.querySelector(".item-type").value;
     const name = nameInput.value.trim();
-    if (type !== "material" || !name) return;
+    const trendBtn = tr.querySelector(".mat-trend");
+    if (type !== "material" || !name) {
+        trendBtn.classList.add("d-none");
+        return;
+    }
     const key = Object.keys(materialMap).find((k) => k.includes(name));
-    if (!key) return;
+    if (!key) {
+        trendBtn.classList.add("d-none");
+        return;
+    }
     const mat = materialMap[key];
     tr.querySelector(".item-unit").value = mat.unit;
     tr.querySelector(".item-price").value = mat.price;
+    if (mat.id) {
+        tr.dataset.matId = mat.id;
+        tr.dataset.matName = key;
+        trendBtn.classList.remove("d-none");
+    }
     const idx = tr.id.split("-")[1];
     updateRowSubtotal(idx);
 }
@@ -270,7 +300,7 @@ async function loadMaterials() {
             const key = `${m.name} ${m.spec} (${m.region})`;
             if (seen.has(key)) return;
             seen.add(key);
-            materialMap[key] = { unit: m.unit, price: m.current_price };
+            materialMap[key] = { unit: m.unit, price: m.current_price, id: m.id };
             const opt = document.createElement("option");
             opt.value = key;
             dl.appendChild(opt);
@@ -456,4 +486,86 @@ function exportResult() {
     a.href = URL.createObjectURL(blob);
     a.download = `成本核算_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
+}
+
+// ===== 材料价格走势同步（原材料行命中材料库后弹出折线图） =====
+async function showMaterialTrend(id, name, unit) {
+    document.getElementById("calcTrendTitle").textContent = `${name} · 价格走势 (${unit})`;
+    trendModal.show();
+    try {
+        const res = await fetch(`/api/materials/${id}/history`);
+        if (!res.ok) throw new Error("加载失败");
+        const history = await res.json();
+        history.sort((a, b) => a.recorded_date.localeCompare(b.recorded_date));
+        drawCalcTrend(history);
+    } catch (e) {
+        alert(`走势加载失败: ${e.message}`);
+    }
+}
+
+function drawCalcTrend(history) {
+    const canvas = document.getElementById("calcTrendChart");
+    if (!canvas || !history || !history.length) return;
+
+    const colors = window.chartColors();
+    const labels = history.map((h) => h.recorded_date);
+    const values = history.map((h) => h.price);
+
+    if (calcTrendChart) calcTrendChart.destroy();
+
+    calcTrendChart = new Chart(canvas, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                {
+                    data: values,
+                    borderColor: colors.series1,
+                    backgroundColor: colors.series1,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0.3,
+                    fill: true,
+                    backgroundColor: (ctx) => {
+                        const { ctx: c, chartArea } = ctx.chart;
+                        if (!chartArea) return "transparent";
+                        const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                        g.addColorStop(0, colors.series1 + "55");
+                        g.addColorStop(1, colors.series1 + "00");
+                        return g;
+                    },
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: colors.surface,
+                    titleColor: colors.ink,
+                    bodyColor: colors.ink,
+                    borderColor: colors.gridline,
+                    borderWidth: 1,
+                    callbacks: { label: (ctx) => ` ¥${ctx.parsed.y.toFixed(2)}` },
+                },
+            },
+            scales: {
+                x: {
+                    ticks: { color: colors.muted, font: { size: 11 }, maxRotation: 45 },
+                    grid: { display: false },
+                    border: { display: false },
+                },
+                y: {
+                    ticks: { color: colors.muted, font: { size: 11 } },
+                    grid: { color: colors.gridline, drawTicks: false },
+                    border: { display: false },
+                },
+            },
+        },
+    });
+    calcTrendChart._data = history; // 供主题切换重绘
 }
