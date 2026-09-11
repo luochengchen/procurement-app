@@ -1,6 +1,10 @@
 /* ============================================================
-   跨境采购助手 — 设计系统
-   明暗主题通过 data-bs-theme 切换，配色与图表共用同一套调色板
+   跨境采购助手 — 设计系统（商务深蓝 + Soft UI）
+   明暗主题通过 data-bs-theme 切换，配色与图表共用同一套调色板。
+
+   注意：base.html 的 window.chartColors() 直接读取
+   --surface / --ink / --muted / --gridline / --series-1..6 这些变量名，
+   改名会静默打断所有图表 —— 只调值，不要改名。
    ============================================================ */
 
 /* ---- 主题色板（light 默认） ---- */
@@ -9,69 +13,72 @@
   color-scheme: light;
 
   /* 表面与文字 */
-  --surface: #fcfcfb;          /* 卡片表面 */
-  --page: #f9f9f7;             /* 页面背景 */
-  --ink: #0b0b0b;              /* 主文字 */
-  --ink-2: #52514e;            /* 次文字 */
-  --muted: #898781;            /* 弱文字 / 轴线 */
-  --gridline: #e1e0d9;         /* 分隔线 */
-  --border: rgba(11, 11, 11, 0.10);
+  --surface: #ffffff;          /* 卡片表面 */
+  --page: #f8fafc;             /* 页面背景 */
+  --ink: #0f172a;              /* 主文字 */
+  --ink-2: #334155;            /* 次文字 */
+  --muted: #64748b;            /* 弱文字 / 轴线 */
+  --gridline: #e2e8f0;         /* 分隔线 */
+  --border: rgba(15, 23, 42, 0.10);
 
   /* 强调色 = categorical slot 1 (blue) */
-  --primary: #2a78d6;
-  --primary-hover: #256abf;
+  --primary: #0369a1;
+  --primary-hover: #0284c7;
 
   /* 分类色（图表 + 标签共用） */
-  --series-1: #2a78d6;  /* blue */
-  --series-2: #eb6834;  /* orange */
-  --series-3: #1baf7a;  /* aqua */
-  --series-4: #eda100;  /* yellow */
-  --series-5: #e87ba4;  /* magenta */
-  --series-6: #008300;  /* green */
-  --series-7: #4a3aa7;  /* violet */
-  --series-8: #e34948;  /* red */
+  --series-1: #0369a1;  /* blue */
+  --series-2: #ea580c;  /* orange */
+  --series-3: #0d9488;  /* teal */
+  --series-4: #d97706;  /* amber */
+  --series-5: #db2777;  /* magenta */
+  --series-6: #16a34a;  /* green */
+  --series-7: #6d28d9;  /* violet */
+  --series-8: #dc2626;  /* red */
 
   /* 状态色（涨跌 / 强制可选） */
-  --good: #006300;    /* 下跌 / 成功 */
-  --warning: #eda100;
-  --serious: #ec835a;
-  --critical: #d03b3b; /* 上涨 / 严重 */
+  --good: #047857;      /* 下跌 / 成功 */
+  --warning: #d97706;
+  --serious: #ea580c;
+  --critical: #dc2626;  /* 上涨 / 严重 */
 
-  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.05);
-  --shadow-md: 0 4px 14px rgba(11, 11, 11, 0.08);
+  /* Soft UI：柔和多层阴影 */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.06), 0 12px 32px rgba(15, 23, 42, 0.10);
+  --ring: 0 0 0 3px rgba(3, 105, 161, 0.18);
 }
 
 /* ---- 暗色主题 ---- */
 [data-bs-theme="dark"] {
   color-scheme: dark;
 
-  --surface: #1a1a19;
-  --page: #0d0d0d;
-  --ink: #ffffff;
-  --ink-2: #c3c2b7;
-  --muted: #898781;
-  --gridline: #2c2c2a;
+  --surface: #131c2e;
+  --page: #0b1220;
+  --ink: #f8fafc;
+  --ink-2: #cbd5e1;
+  --muted: #94a3b8;
+  --gridline: #26334a;
   --border: rgba(255, 255, 255, 0.10);
 
-  --primary: #3987e5;
-  --primary-hover: #5598e7;
+  --primary: #38bdf8;
+  --primary-hover: #7dd3fc;
 
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #008300;
-  --series-7: #9085e9;
-  --series-8: #e66767;
+  --series-1: #38bdf8;
+  --series-2: #fb923c;
+  --series-3: #2dd4bf;
+  --series-4: #fbbf24;
+  --series-5: #f472b6;
+  --series-6: #4ade80;
+  --series-7: #a78bfa;
+  --series-8: #f87171;
 
-  --good: #0ca30c;
-  --warning: #c98500;
-  --serious: #ec835a;
-  --critical: #e66767;
+  --good: #34d399;
+  --warning: #fbbf24;
+  --serious: #fb923c;
+  --critical: #f87171;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --ring: 0 0 0 3px rgba(56, 189, 248, 0.24);
 }
 
 /* ---- 覆盖 Bootstrap 变量，让组件跟随设计系统 ---- */
@@ -79,7 +86,7 @@
   --bs-body-bg: var(--page);
   --bs-body-color: var(--ink);
   --bs-primary: var(--primary);
-  --bs-primary-rgb: 42, 120, 214;
+  --bs-primary-rgb: 3, 105, 161;
   --bs-border-color: var(--gridline);
   --bs-card-bg: var(--surface);
   --bs-body-font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
@@ -89,7 +96,7 @@
   --bs-body-bg: var(--page);
   --bs-body-color: var(--ink);
   --bs-primary: var(--primary);
-  --bs-primary-rgb: 57, 135, 229;
+  --bs-primary-rgb: 56, 189, 248;
   --bs-border-color: var(--gridline);
   --bs-card-bg: var(--surface);
   --bs-body-font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
@@ -102,6 +109,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  -webkit-font-smoothing: antialiased;
   transition: background 0.25s ease, color 0.25s ease;
 }
 
@@ -110,24 +118,46 @@ main {
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 3rem;
+  padding: 1.75rem 1.25rem 3rem;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.015em;
+}
+
+/* 键盘焦点环 —— 鼠标点击不显示，Tab 导航必须可见 */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 /* ---- 导航栏 ---- */
 .navbar {
-  background: var(--surface) !important;
+  background: color-mix(in srgb, var(--surface) 88%, transparent) !important;
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(8px);
+  backdrop-filter: saturate(180%) blur(12px);
 }
 
 .navbar-brand {
   color: var(--ink) !important;
   font-weight: 700;
   letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
 }
 
+/* 品牌图标做成深蓝渐变方块，替代裸图标 */
 .navbar-brand i {
-  color: var(--primary);
+  color: #fff;
+  background: linear-gradient(150deg, #0f172a 0%, var(--primary) 100%);
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
 }
 
 .navbar .nav-link {
@@ -135,7 +165,7 @@ main {
   font-size: 0.925rem;
   font-weight: 500;
   padding: 0.5rem 0.9rem;
-  border-radius: 8px;
+  border-radius: 9px;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -175,17 +205,19 @@ main {
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 
 .card:hover {
   box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
 }
 
 .card-header {
   background: transparent;
   border-bottom: 1px solid var(--border);
   font-weight: 600;
+  padding: 0.9rem 1.25rem;
 }
 
 /* ---- 统计卡片 ---- */
@@ -206,6 +238,7 @@ main {
   font-weight: 700;
   line-height: 1.2;
   margin-top: 0.25rem;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -255,6 +288,13 @@ main {
   border-bottom: 1px solid var(--gridline);
   vertical-align: middle;
   font-size: 0.9rem;
+}
+
+/* 数字列对齐，避免逐行宽度跳动 */
+.table tbody td.num,
+.table thead th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .table-hover tbody tr {
@@ -365,6 +405,7 @@ main {
   border-radius: 14px;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
+  box-shadow: var(--shadow-sm);
 }
 
 /* ---- 页脚 ---- */
@@ -383,12 +424,18 @@ footer {
   color: var(--ink);
   border: 1px solid var(--border);
   border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .form-control:focus,
 .form-select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+  box-shadow: var(--ring);
+}
+
+.form-control::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
 }
 
 .form-label {
@@ -401,6 +448,20 @@ footer {
 .btn {
   border-radius: 10px;
   font-weight: 500;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.btn-primary {
+  box-shadow: 0 1px 2px rgba(3, 105, 161, 0.18), 0 4px 12px rgba(3, 105, 161, 0.18);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 /* ---- 费用合计行 ---- */
@@ -423,5 +484,21 @@ footer {
   }
   .stat-card .stat-value {
     font-size: 1.5rem;
+  }
+}
+
+/* ---- 尊重系统「减弱动效」偏好 ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .quick-link:hover,
+  .btn-primary:hover {
+    transform: none;
   }
 }
