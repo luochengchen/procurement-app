@@ -2,17 +2,34 @@
 {% block title %}产品认证查询 - 跨境采购助手{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col">
-        <h3><i class="bi bi-patch-check"></i> 产品认证需求查询</h3>
-        <p class="text-muted">按产品类别和目标市场查询所需认证。认证分两类：<strong class="text-danger">强制性认证</strong>（不办无法合规销售）与 <strong class="text-success">附加值认证</strong>（办了可溢价、进入更高端渠道）。</p>
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="mb-1"><i class="bi bi-patch-check me-2 text-primary"></i>产品认证需求查询</h3>
+        <p class="text-muted mb-0">
+            按产品类别和目标市场查询所需认证。认证分两类：<strong class="text-danger">强制性认证</strong>（不办无法合规销售）与
+            <strong class="text-success">附加值认证</strong>（办了可溢价、进入更高端渠道）。
+        </p>
     </div>
 </div>
 
+<!-- 放图片：识别出产品关键词后自动查询该产品所需认证 -->
+<div class="mb-3">
+    {% set drop_id = "certDrop" %}
+    {% set drop_compact = true %}
+    {% set drop_title = "有产品图片？放进来查该产品需要的认证" %}
+    {% set drop_hint = "点击选择 · 拖拽 · Ctrl+V 粘贴" %}
+    {% set drop_kw_placeholder = "补充产品关键词（可选）" %}
+    {% set drop_btn = "识别并查认证" %}
+    {% set drop_auto = true %}
+    {% set drop_target = "fillSearch" %}
+    {% set drop_input = "keywordInput" %}
+    {% set drop_trigger = "queryBtn" %}
+    {% include "partials/image_drop.html" %}
+</div>
+
 <!-- Filters -->
-<div class="card mb-3">
-    <div class="card-body">
-        <div class="row g-2 align-items-end">
+<div class="filter-bar">
+    <div class="row g-2 align-items-end">
             <div class="col-md-3">
                 <label class="form-label">产品关键词 <small class="text-muted">(识图自动填入)</small></label>
                 <input type="text" class="form-control" id="keywordInput" placeholder="如：跑步机 / 保温杯 / 蓝牙耳机">
@@ -42,7 +59,6 @@
             </div>
         </div>
     </div>
-</div>
 
 <!-- Match hint -->
 <div class="alert alert-warning d-none" id="matchHint">
@@ -117,5 +133,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/image_drop.js') }}"></script>
 <script src="{{ url_for('static', filename='js/certification.js') }}"></script>
 {% endblock %}

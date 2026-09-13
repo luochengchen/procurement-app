@@ -1,13 +1,23 @@
-"""Factory matching module — search factories by product, scale, region, revenue.
+"""Factory matching module — search factories by product, scale, region.
 
-数据源（预留）：当前为内置模拟数据。后续接入：
-  - 1688 工厂 API `alibaba.icbu.company.get`（item_get_factory）：主营产品、厂房面积、
-    员工规模、年营业额、产能、认证 —— 唯一同时覆盖「规模/地址/年销售额/产品」四字段。
-  - 天眼查/企查查工商 API：经营范围、注册地址、注册资本（主体校验补充）。
+数据源降级链：天眼查（主，需 token）→ Apizero（保底，匿名）→ 本地模拟库（兜底）。
+
+本模块负责「筛选/排序/兜底」这一层；字段归一化与经营范围解析在 service.py，
+行业推断与产业带知识库在 industry_belt.py。
+
+重要：筛选对**真实数据同样生效**。此前外部数据路径只透传关键词、把
+region/industry/scale/sort 全部丢弃，导致用户按行业筛选永远筛不到东西 —— 已修正。
 """
 from __future__ import annotations
 
 from flask import Blueprint, jsonify, render_template, request
+
+from modules.factory.industry_belt import (
+    BELTS,
+    HOT_CATEGORIES,
+    INDUSTRY_RULES,
+    capital_to_wan,
+)
 
 factory_bp = Blueprint("factory", __name__, template_folder="../../templates")
 
@@ -65,8 +75,11 @@ FACTORIES = [
     {
         "id": i,
         "name": name,
+        "english_name": "",
         "industry": industry,
         "region": region,
+        "city": region.split()[-1] if " " in region else region,
+        "district": "",
         "employees": employees,
         "factory_area": area,
         "annual_revenue": revenue,  # 单位：万元
@@ -75,10 +88,19 @@ FACTORIES = [
         "legal_person": "",
         "established": "",
         "credit_code": "",
+        "phone": "",
+        "email": "",
+        "reg_status": "存续",
+        "company_org_type": "",
         "main_products": products,
         "processes": processes,
         "certifications": certs,
         "export_markets": markets,
+        "is_manufacturer": True,   # 模拟库全部是生产型工厂
+        "can_export": bool(markets),
+        "scale_label": "小型" if employees < 100 else ("中型" if employees < 300 else "大型"),
+        "scale_basis": f"员工 {employees} 人",
+        "belt": "",
         "verified": True,
         "source": "本地模拟",
         "is_external": False,
@@ -87,117 +109,193 @@ FACTORIES = [
             products, processes, certs, markets) in enumerate(_FACTORY_ROWS, 1)
 ]
 
+# 行业下拉选项：与 industry_belt 的推断词汇同一套，保证真实数据也能筛到
+INDUSTRIES = [name for name, _ in INDUSTRY_RULES]
+
+# 地区选项：省级（来自模拟库）+ 产业带城市（真实数据里 city 是「宁波市」这种）
+REGIONS = sorted(
+    {r.split()[0] for r in {f["region"] for f in FACTORIES} if " " in r}
+    | set(BELTS.keys())
+)
+
+SCALES = [
+    {"value": "small", "label": "小型（注册资本 < 100 万）"},
+    {"value": "medium", "label": "中型（100-1000 万）"},
+    {"value": "large", "label": "大型（> 1000 万）"},
+]
+
+# 前端排序值 → 说明。mock 库没有注册资本/成立日期，用年销售额与员工规模代理。
+SORTS = [
+    {"value": "relevance", "label": "相关度"},
+    {"value": "capital_desc", "label": "注册资本 ↓"},
+    {"value": "established_desc", "label": "成立时间 ↓"},
+    {"value": "name", "label": "厂名"},
+]
+
 
 def _match_text(factory: dict, q: str) -> bool:
-    """判断工厂是否匹配关键词（厂名/行业/主营产品/工艺）。"""
+    """判断工厂是否匹配关键词（厂名/行业/主营产品/工艺/经营范围）。"""
     haystack = " ".join(
-        [factory["name"], factory["industry"], factory["region"]] +
+        [factory["name"], factory["industry"], factory["region"],
+         factory.get("business_scope", "")] +
         factory["main_products"] + factory["processes"]
     ).lower()
     return q in haystack
 
 
 def _matched_products(factory: dict, q: str) -> list[str]:
-    """返回与关键词匹配的主营产品（用于展示「可生产什么」）。"""
+    """返回与关键词匹配的主营产品（用于展示「可生产什么」并高亮）。"""
     return [p for p in factory["main_products"] if q.lower() in p.lower()]
 
 
 @factory_bp.route("/factory")
 def page() -> str:
     """Render the factory matching page."""
-    regions = sorted({f["region"] for f in FACTORIES})
-    industries = sorted({f["industry"] for f in FACTORIES})
-    return render_template("factory.html", regions=regions, industries=industries)
+    return render_template(
+        "factory.html",
+        regions=REGIONS,
+        industries=INDUSTRIES,
+        sorts=SORTS,
+        hot_categories=HOT_CATEGORIES,
+    )
 
 
-def _filter_mock(q: str, region: str, industry: str, scale: str, sort: str) -> list[dict]:
-    """本地模拟数据的筛选/排序逻辑（保留完整四字段演示能力）。"""
-    results = []
-    for f in FACTORIES:
-        if q and not _match_text(f, q):
-            continue
-        if region and f["region"] != region:
-            continue
-        if industry and f["industry"] != industry:
-            continue
-        if scale == "small" and f["employees"] >= 100:
-            continue
-        if scale == "medium" and not (100 <= f["employees"] < 300):
-            continue
-        if scale == "large" and f["employees"] < 300:
-            continue
-
-        item = dict(f)
-        if q:
-            item["matched_products"] = _matched_products(f, q)
-        results.append(item)
-
-    if sort == "employees_desc":
-        results.sort(key=lambda f: f["employees"], reverse=True)
-    elif sort == "name":
-        results.sort(key=lambda f: f["name"])
-    else:
-        results.sort(key=lambda f: f["annual_revenue"], reverse=True)
-    return results
+# ---------------------------------------------------------------------------
+# 统一筛选/排序：mock 与真实数据走同一套参数语义
+# ---------------------------------------------------------------------------
+def _scale_bucket(factory: dict) -> str:
+    """把规模归一为 small/medium/large（真实数据由注册资本换算）。"""
+    label = factory.get("scale_label") or ""
+    return {"小型": "small", "中型": "medium", "大型": "large"}.get(label, "")
 
 
-def _sort_external(results: list[dict], sort: str) -> list[dict]:
-    """外部工商数据排序：年销售额/员工数缺失，仅支持按厂名，其余保持相关度顺序。"""
+def _apply_filters(results: list[dict], q: str, region: str, industry: str,
+                   scale: str, only_manufacturer: bool,
+                   exclude_inactive: bool) -> list[dict]:
+    """对（mock 或真实）工厂列表统一施加筛选条件。
+
+    region 用子串匹配而非等值：真实数据的地址是「浙江省宁波市北仑区…」这种长串，
+    用户填「宁波」就该命中。
+    """
+    out = []
+    for f in results:
+        if exclude_inactive and f.get("reg_status") and f["reg_status"] != "存续":
+            continue
+        if only_manufacturer and not f.get("is_manufacturer"):
+            continue
+        if region:
+            hay = " ".join([f.get("region", ""), f.get("city", ""),
+                            f.get("district", "")])
+            if region not in hay:
+                continue
+        if industry and industry != f.get("industry"):
+            continue
+        if scale and _scale_bucket(f) != scale:
+            continue
+        out.append(f)
+    return out
+
+
+def _apply_sort(results: list[dict], sort: str) -> list[dict]:
+    """排序。真实数据没有年销售额/员工数，用注册资本与成立日期替代。"""
     if sort == "name":
-        results.sort(key=lambda f: f["name"])
+        results.sort(key=lambda f: f.get("name") or "")
+    elif sort == "established_desc":
+        results.sort(key=lambda f: f.get("established") or "", reverse=True)
+    elif sort == "capital_desc":
+        results.sort(key=lambda f: capital_to_wan(f.get("reg_capital") or "")
+                     or f.get("annual_revenue") or 0, reverse=True)
+    else:  # relevance：真实数据保持 service 打好的相关度序；mock 用年销售额代理
+        if results and not results[0].get("is_external"):
+            results.sort(key=lambda f: f.get("annual_revenue") or 0, reverse=True)
     return results
 
 
 @factory_bp.route("/api/factory")
 def api_search():
-    """Search/match factories. Query params: q, region, industry, scale, sort.
+    """Search/match factories. Query params:
 
-    数据源降级链：天眼查（主，需 token）→ Apizero（保底，匿名）→ 本地模拟（兜底）。
+    q, region, industry, scale, sort, only_manufacturer, exclude_inactive
     """
     q = request.args.get("q", "").strip()
     region = request.args.get("region", "").strip()
     industry = request.args.get("industry", "").strip()
     scale = request.args.get("scale", "").strip()  # small / medium / large
-    sort = request.args.get("sort", "revenue_desc")  # revenue_desc / employees_desc / name
+    sort = request.args.get("sort", "relevance").strip()
+    only_manufacturer = request.args.get("only_manufacturer") in ("1", "true", "on")
+    # 默认剔除注销/吊销企业 —— 采购拿着一个已注销的主体去谈是纯浪费时间
+    exclude_inactive = request.args.get("exclude_inactive", "1") not in ("0", "false", "off")
 
-    # 优先真实外部数据（仅当有关键词时，外部 API 按关键词搜索企业）
+    # 优先真实外部数据（工商 API 按关键词检索，必须有 q）
     if q:
         try:
-            from modules.factory.service import search_external
-            external, source = search_external(q)
+            from modules.factory.service import search_external_multi
+            external, source, keywords, notice = search_external_multi(q)
             if external:
                 for i, f in enumerate(external):
                     f["id"] = 1000 + i  # 稳定 id，供前端详情索引
-                results = _sort_external(external, sort)
+                filtered = _apply_filters(external, q, region, industry, scale,
+                                          only_manufacturer, exclude_inactive)
+                filtered = _apply_sort(filtered, sort)
+                return jsonify({
+                    "total": len(filtered),
+                    "results": filtered,
+                    "data_source": source,
+                    "keywords": keywords,
+                    "notice": notice,
+                    "external_available": True,
+                })
+            if notice:
+                # 外部源报错（额度用尽等）—— 明确告诉用户为什么看到的是模拟数据
+                mock = [dict(f) for f in FACTORIES]
+                results = _apply_sort(
+                    _apply_filters(mock, q, region, industry, scale,
+                                   only_manufacturer, exclude_inactive), sort)
                 return jsonify({
                     "total": len(results),
                     "results": results,
-                    "data_source": source,
+                    "data_source": "本地模拟",
+                    "keywords": keywords,
+                    "notice": notice,
+                    "external_available": False,
                 })
         except Exception:
-            pass  # 外部全部失败 → 降级本地模拟
+            pass  # 外部链路整体异常 → 降级本地模拟
 
-    results = _filter_mock(q, region, industry, scale, sort)
-    return jsonify({"total": len(results), "results": results, "data_source": "本地模拟"})
+    # 本地兜底：先复制再加工，避免把 matched_products 写回模块级常量污染后续请求
+    results = [dict(f) for f in FACTORIES]
+    if q:
+        for f in results:
+            f["matched_products"] = _matched_products(f, q)
+    results = _apply_sort(
+        _apply_filters(results, q, region, industry, scale,
+                       only_manufacturer, exclude_inactive), sort)
+    return jsonify({
+        "total": len(results),
+        "results": results,
+        "data_source": "本地模拟",
+        "keywords": [q] if q else [],
+        "notice": "",
+        "external_available": True,
+    })
 
 
 @factory_bp.route("/api/factory/filters")
 def api_filters():
-    """返回工厂筛选的可选项（地区/行业/规模），供嵌入页/识图页动态填充下拉框。"""
+    """筛选可选项（地区/行业/规模/排序 + 产业带 + 热门品类），供各页动态填充。"""
     return jsonify({
-        "regions": sorted({f["region"] for f in FACTORIES}),
-        "industries": sorted({f["industry"] for f in FACTORIES}),
-        "scales": [
-            {"value": "small", "label": "小型（<100人）"},
-            {"value": "medium", "label": "中型（100-300人）"},
-            {"value": "large", "label": "大型（>300人）"},
-        ],
+        "regions": REGIONS,
+        "industries": INDUSTRIES,
+        "scales": SCALES,
+        "sorts": SORTS,
+        "belts": [{"city": city, **belt} for city, belt in BELTS.items() if belt["categories"]],
+        "hot_categories": HOT_CATEGORIES,
     })
 
 
 @factory_bp.route("/api/factory/<int:factory_id>")
 def api_detail(factory_id: int):
-    """Get a single factory's full profile."""
+    """Get a single factory's full profile (本地模拟库专用)."""
     factory = next((f for f in FACTORIES if f["id"] == factory_id), None)
     if not factory:
         return jsonify({"error": "工厂不存在"}), 404
@@ -206,28 +304,34 @@ def api_detail(factory_id: int):
 
 @factory_bp.route("/api/factory/external")
 def api_external():
-    """预留外部工厂数据接口。"""
+    """外部工厂数据接入说明（真实字段能力与缺口清单）。"""
     return jsonify({
-        "error": "外部工厂数据API尚未接入",
-        "message": "此接口预留给 1688 工厂 API / 工商数据 API 集成",
+        "status": "partially_implemented",
+        "active_sources": [
+            "Apizero 企业工商查询（匿名可用，配置 APIZERO_API_KEY 提升额度）",
+            "天眼查开放平台（配置 TIANYANCHA_TOKEN 后作为主源）",
+        ],
+        "available_fields": [
+            "企业名称/英文名/法定代表人/统一社会信用代码",
+            "注册地址/城市/区县/注册资本/成立日期/登记状态/企业类型",
+            "经营范围（→ 解析出行业、可生产产品、是否生产型、出口资质）",
+            "联系电话/邮箱",
+        ],
+        "missing_fields": {
+            "年销售额": "工商数据不提供。需 1688 工厂 API（需企业资质+信息共享协议）",
+            "员工数": "工商数据不提供。当前用注册资本换算规模档位并标注口径",
+            "厂房面积": "工商数据不提供。同上",
+        },
         "planned_integrations": [
             "1688 alibaba.icbu.company.get（主营产品/厂房面积/员工规模/年营业额）",
-            "1688 item_search_factory（按关键词/类目/地区/产能筛选）",
-            "天眼查/企查查工商API（经营范围/注册地址/注册资本主体校验）",
             "国家企业信用信息公示系统（官方权威数据）",
         ],
         "request_format": {
-            "product": "产品/关键词（用于匹配可生产该产品的工厂）",
-            "region": "地区 (optional)",
-            "industry": "行业 (optional)",
-            "scale": "规模 small/medium/large (optional)",
+            "q": "产品/关键词（必填，外部源按关键词检索）",
+            "region": "地区（子串匹配 city/district/reg_location）",
+            "industry": "行业（取自 industry_belt 推断词汇表）",
+            "scale": "规模 small/medium/large（按注册资本换算）",
+            "only_manufacturer": "1 = 只看生产型厂家",
+            "exclude_inactive": "0 = 保留注销/吊销企业（默认剔除）",
         },
-        "response_format": {
-            "factories": [{
-                "name": "工厂名称", "region": "地址",
-                "employees": "员工规模", "factory_area": "厂房面积",
-                "annual_revenue": "年销售额", "main_products": ["可生产产品"],
-            }],
-        },
-        "status": "not_implemented",
-    }), 501
+    })

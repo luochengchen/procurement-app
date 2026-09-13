@@ -1,0 +1,55 @@
+{# 可复用「放图片」组件 —— 全站识图入口统一走这里。
+   用法（变量在 include 之前 set 即可传入）：
+
+     {% set drop_id = "matDrop" %}
+     {% set drop_title = "图片找材料" %}
+     {% set drop_hint = "拖入或粘贴材料/产品照片，识别后自动填入搜索" %}
+     {% set drop_kw_placeholder = "补充关键词（可选，能明显提高准确度）" %}
+     {% include "partials/image_drop.html" %}
+
+   drop_target 决定识别完自动做什么：
+     fillSearch（默认）→ 填入 drop_input 指定的输入框（默认 searchInput）并点击 drop_trigger（默认 searchBtn）
+     goto             → 跳转到 drop_goto 指定的页面（默认 /factory）并带上 ?q=
+     manual           → 不自动动作，由页面脚本挂 onRecognized 自己处理
+
+   所有子元素 id 均由 drop_id 派生，同一页面可以放多个实例而不冲突
+   （此前页面里已经有 keywordInput 这类固定 id 重复出现，是隐患）。
+#}
+{% set _id = drop_id|default('imgDrop') %}
+{% set _compact = drop_compact|default(false) %}
+<div class="img-drop{{ ' img-drop-compact' if _compact else '' }}" id="{{ _id }}"
+     data-auto="{{ 1 if drop_auto else 0 }}"
+     data-target="{{ drop_target|default('') }}"
+     data-input="{{ drop_input|default('') }}"
+     data-trigger="{{ drop_trigger|default('') }}"
+     data-goto="{{ drop_goto|default('') }}"
+     {% if drop_manual %}data-manual="1"{% endif %}>
+
+    <div class="img-drop-zone" data-role="zone" tabindex="0" role="button"
+         aria-label="{{ drop_title|default('上传图片') }}">
+        <i class="bi bi-cloud-arrow-up img-drop-icon"></i>
+        <div class="img-drop-title">{{ drop_title|default('放一张图片进来') }}</div>
+        <div class="img-drop-hint">{{ drop_hint|default('点击选择 · 拖拽到此处 · 或直接 Ctrl+V 粘贴 · 手机可拍照') }}</div>
+        <input type="file" accept="image/*" capture="environment" data-role="file" hidden>
+    </div>
+
+    <div class="img-drop-preview d-none" data-role="preview">
+        <div class="img-drop-thumb">
+            <img data-role="img" alt="待识别图片">
+        </div>
+        <div class="img-drop-panel">
+            <input type="text" class="form-control form-control-sm" data-role="kw"
+                   placeholder="{{ drop_kw_placeholder|default('补充关键词（可选）') }}">
+            <div class="img-drop-actions">
+                <button type="button" class="btn btn-sm btn-primary" data-role="go">
+                    <i class="bi bi-search"></i> {{ drop_btn|default('识别并搜索') }}
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-role="reset"
+                        title="重新选择图片">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+            </div>
+            <div class="img-drop-note small text-muted" data-role="note"></div>
+        </div>
+    </div>
+</div>

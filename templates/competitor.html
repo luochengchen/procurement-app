@@ -11,6 +11,20 @@
 
 <!-- ===== 1. 模板选择 ===== -->
 <div id="tplPicker">
+    <!-- 放图片：识别出竞品后，选模板时自动预填「分析对象」 -->
+    <div class="mb-3">
+        {% set drop_id = "compDrop" %}
+        {% set drop_compact = true %}
+        {% set drop_title = "有竞品图片？放进来识别产品，选模板后自动预填分析对象" %}
+        {% set drop_hint = "点击选择 · 拖拽 · Ctrl+V 粘贴" %}
+        {% set drop_kw_placeholder = "补充竞品/产品关键词（可选）" %}
+        {% set drop_btn = "识别竞品" %}
+        {% set drop_target = "manual" %}
+        {% set drop_manual = true %}
+        {% include "partials/image_drop.html" %}
+        <div id="compDropTip" class="d-none"></div>
+    </div>
+
     <div class="row g-3">
         {% for t in templates %}
         <div class="col-lg-4 col-md-6">
@@ -121,5 +135,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/image_drop.js') }}"></script>
 <script src="{{ url_for('static', filename='js/competitor.js') }}"></script>
 {% endblock %}

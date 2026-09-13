@@ -2,8 +2,24 @@
 let currentTemplate = null;
 let lastResult = null;
 let reportModal = null;
+let pendingKeyword = "";   // 识图识别出的竞品名，选完模板后自动预填「分析对象」
 
 document.addEventListener("DOMContentLoaded", () => {
+    // 识图入口：识别结果先存起来，等用户选完模板再预填
+    const dropRoot = document.getElementById("compDrop");
+    if (dropRoot && window.ImageDrop) {
+        ImageDrop.mount(dropRoot, {
+            onRecognized: (kw) => {
+                pendingKeyword = kw;
+                const tip = document.getElementById("compDropTip");
+                if (tip) {
+                    tip.className = "alert alert-info py-2 small mt-2 mb-0";
+                    tip.innerHTML = `<i class="bi bi-check2-circle me-1"></i>已识别竞品关键词「${escapeTpl(kw)}」，选一套模板后会自动预填「分析对象」。`;
+                }
+            },
+        });
+    }
+
     document.querySelectorAll(".pick-tpl").forEach((btn) => {
         btn.addEventListener("click", () => {
             const key = btn.closest(".tpl-card").dataset.key;
@@ -57,9 +73,24 @@ function renderEditor(tpl) {
     wrap.innerHTML = "";
     tpl.sections.forEach((sec) => wrap.appendChild(buildSection(sec)));
 
+    // 识图识别过竞品名 → 自动填进第一个输入框（通常是「分析对象/竞品名称」）
+    if (pendingKeyword) {
+        const first = wrap.querySelector('input[type="text"], textarea');
+        if (first && !first.value) {
+            first.value = pendingKeyword;
+            first.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    }
+
     document.getElementById("tplPicker").classList.add("d-none");
     document.getElementById("tplEditor").classList.remove("d-none");
     window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function escapeTpl(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
 }
 
 function buildSection(sec) {

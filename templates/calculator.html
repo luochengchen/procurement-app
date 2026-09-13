@@ -2,11 +2,24 @@
 {% block title %}成本核算 - 跨境采购助手{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col">
-        <h3><i class="bi bi-calculator"></i> 成本核算</h3>
-        <p class="text-muted">按原材料、人力、水电气、加工费等分项核算产品总成本</p>
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="mb-1"><i class="bi bi-calculator me-2 text-primary"></i>成本核算</h3>
+        <p class="text-muted mb-0">按原材料、人力、水电气、加工费等分项核算产品总成本</p>
     </div>
+</div>
+
+<!-- 放图片：识别出材料后从材料库匹配单价，一键加入成本表 -->
+<div class="mb-3">
+    {% set drop_id = "calcDrop" %}
+    {% set drop_compact = true %}
+    {% set drop_title = "有产品图片？放进来识别材料并加入成本表" %}
+    {% set drop_hint = "点击选择 · 拖拽 · Ctrl+V 粘贴" %}
+    {% set drop_kw_placeholder = "补充材料/产品关键词（可选）" %}
+    {% set drop_btn = "识别并找材料" %}
+    {% set drop_target = "manual" %}
+    {% set drop_manual = true %}
+    {% include "partials/image_drop.html" %}
 </div>
 
 <!-- 预设模板 -->
@@ -155,11 +168,25 @@
         </div>
     </div>
 </div>
+
+<!-- 识图找材料弹窗：把识别出的材料从材料库匹配出来，一键加入成本表 -->
+<div class="modal fade" id="calcMatModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="background: var(--surface); color: var(--ink)">
+            <div class="modal-header border-bottom" style="border-color: var(--border) !important">
+                <h6 class="modal-title"><i class="bi bi-box-seam me-1"></i>识别到的材料 · 点击加入成本表</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="calcMatBody"></div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     const ITEM_TYPES = {{ item_types | tojson }};
 </script>
+<script src="{{ url_for('static', filename='js/image_drop.js') }}"></script>
 <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
 {% endblock %}

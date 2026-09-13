@@ -35,6 +35,7 @@ let calcTrendChart = null;   // 材料价格走势折线
 let trendModal = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+    bindCalcImageDrop();
     document.getElementById("addRowBtn").addEventListener("click", () => addRow("other"));
     document.getElementById("calcBtn").addEventListener("click", calculate);
     document.getElementById("clearBtn").addEventListener("click", clearAll);
@@ -56,6 +57,78 @@ document.addEventListener("DOMContentLoaded", () => {
     addRow("labor");
     addRow("utility");
 });
+
+// ---------------------------------------------------------------------------
+// 识图找材料：识别出的关键词 → 匹配材料库 → 点选后按材料单价加入成本表
+// ---------------------------------------------------------------------------
+let matSuggestModal = null;
+
+function bindCalcImageDrop() {
+    const root = document.getElementById("calcDrop");
+    if (!root || !window.ImageDrop) return;
+    ImageDrop.mount(root, { onRecognized: suggestMaterials });
+}
+
+async function suggestMaterials(keyword) {
+    const body = document.getElementById("calcMatBody");
+    if (!matSuggestModal) matSuggestModal = new bootstrap.Modal(document.getElementById("calcMatModal"));
+    body.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> 正在匹配材料库…</div>';
+    matSuggestModal.show();
+
+    try {
+        const res = await fetch(`/api/materials?q=${encodeURIComponent(keyword)}&limit=10`);
+        if (!res.ok) throw new Error("材料库查询失败");
+        const items = await res.json();
+
+        if (!items.length) {
+            body.innerHTML = `<p class="text-muted mb-0">材料库里没有「${escapeCalc(keyword)}」相关条目。
+                可在下方成本表格中点「添加行」手动录入该材料。</p>`;
+            return;
+        }
+
+        body.innerHTML = `
+            <p class="text-muted small">识别关键词「${escapeCalc(keyword)}」，材料库匹配到 ${items.length} 条：</p>
+            <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                <thead><tr><th>材料</th><th>分类</th><th class="num">单价</th><th>单位</th><th class="text-end">操作</th></tr></thead>
+                <tbody>${items.map((m) => `
+                    <tr>
+                        <td><div class="fw-semibold">${escapeCalc(m.name)}</div>
+                            <small class="text-muted">${escapeCalc(m.spec || "")}</small></td>
+                        <td><span class="badge-soft">${escapeCalc(m.category_name || "")}</span></td>
+                        <td class="num">${escapeCalc(m.currency || "CNY")} ${Number(m.current_price).toFixed(2)}</td>
+                        <td>${escapeCalc(m.unit || "")}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-primary add-mat"
+                                data-name="${escapeCalc(m.name)}" data-unit="${escapeCalc(m.unit || "pcs")}"
+                                data-price="${Number(m.current_price) || 0}">
+                                <i class="bi bi-plus-lg"></i> 加入成本表
+                            </button>
+                        </td>
+                    </tr>`).join("")}
+                </tbody>
+            </table></div>`;
+
+        body.querySelectorAll(".add-mat").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                addRow("material", {
+                    name: btn.dataset.name,
+                    unit: btn.dataset.unit,
+                    unit_price: Number(btn.dataset.price) || 0,
+                    quantity: 1,
+                });
+                matSuggestModal.hide();
+            });
+        });
+    } catch (e) {
+        body.innerHTML = `<p class="text-danger mb-0">加载失败：${escapeCalc(e.message)}</p>`;
+    }
+}
+
+function escapeCalc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+}
 
 function addRow(defaultType = "other", data = null) {
     const tbody = document.getElementById("costItems");

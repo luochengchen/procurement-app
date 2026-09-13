@@ -1,174 +1,138 @@
-// Image search — upload preview, drag & drop, search
-const uploadZone = document.getElementById("uploadZone");
-const fileInput = document.getElementById("fileInput");
-const previewContainer = document.getElementById("previewContainer");
-const previewImg = document.getElementById("previewImg");
-const clearPreviewBtn = document.getElementById("clearPreview");
-const searchBtn = document.getElementById("searchBtn");
-const resultsContainer = document.getElementById("resultsContainer");
-const searchNote = document.getElementById("searchNote");
-
-let selectedFile = null;
-
-// Click to select
-uploadZone.addEventListener("click", () => fileInput.click());
-fileInput.addEventListener("change", (e) => handleFile(e.target.files[0]));
-
-// Drag & drop
-uploadZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    uploadZone.classList.add("drag-over");
-});
-uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
-uploadZone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    uploadZone.classList.remove("drag-over");
-    handleFile(e.dataTransfer.files[0]);
-});
-
-function handleFile(file) {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return alert("请选择图片文件");
-    selectedFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        previewImg.src = e.target.result;
-        previewContainer.style.display = "block";
-        uploadZone.style.display = "none";
-        searchBtn.disabled = false;
-    };
-    reader.readAsDataURL(file);
-}
-
-clearPreviewBtn.addEventListener("click", () => {
-    selectedFile = null;
-    fileInput.value = "";
-    previewContainer.style.display = "none";
-    uploadZone.style.display = "block";
-    searchBtn.disabled = true;
-    resultsContainer.innerHTML = '<p class="text-muted text-center py-4">上传图片后点击搜索</p>';
-    searchNote.textContent = "";
-});
-
-searchBtn.addEventListener("click", async () => {
-    if (!selectedFile) return;
-
-    const formData = new FormData();
-    formData.append("image", selectedFile);
-    formData.append("keyword", document.getElementById("keywordInput").value.trim());
-
-    searchBtn.disabled = true;
-    searchBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 搜索中...';
-    resultsContainer.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div></div>';
-
-    try {
-        const res = await fetch("/api/image-search/upload", { method: "POST", body: formData });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-
-        if (data.note) searchNote.textContent = data.note;
-
-        // 联动跳转：按识别关键词匹配可生产工厂 / 查询该产品所需认证
-        const kw = data.keyword || "";
-        const matchBar = kw
-            ? `<div class="d-flex gap-2 flex-wrap mb-3">
-                 <a href="/factory?q=${encodeURIComponent(kw)}" class="btn btn-sm btn-outline-primary">
-                   <i class="bi bi-buildings me-1"></i> 工厂详情页
-                 </a>
-                 <a href="/certification?q=${encodeURIComponent(kw)}" class="btn btn-sm btn-outline-success">
-                   <i class="bi bi-patch-check me-1"></i> 查认证要求（强制 / 附加值）
-                 </a>
-               </div>`
-            : "";
-
-        // 识图关键词自动带入下方工厂筛选栏并触发筛选
-        if (kw) {
-            document.getElementById("imgFactoryQ").value = kw;
-            searchImgFactories();
-        }
-
-        resultsContainer.innerHTML = matchBar + data.results
-            .map(
-                (r) => `
-            <div class="card mb-2 supplier-card">
-                <div class="card-body position-relative">
-                    <span class="badge bg-primary platform-badge">${r.platform}</span>
-                    <h6 class="card-title pe-5">${r.title}</h6>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="fw-bold text-success">${r.price}</span>
-                            <small class="text-muted ms-2">${r.supplier}</small>
-                        </div>
-                        <small class="text-muted">${r.location}</small>
-                    </div>
-                    <a href="${r.url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                        <i class="bi bi-box-arrow-up-right"></i> 查看详情
-                    </a>
-                </div>
-            </div>`
-            )
-            .join("");
-    } catch (e) {
-        resultsContainer.innerHTML = `<p class="text-danger text-center py-4">搜索失败: ${e.message}</p>`;
-    } finally {
-        searchBtn.disabled = false;
-        searchBtn.innerHTML = '<i class="bi bi-search"></i> 开始搜索';
-    }
-});
-
-// ===== 嵌入式工厂筛选（复用 /api/factory 真实筛选，识图关键词自动带入） =====
-let imgFactories = [];       // 当前工厂结果缓存，供详情弹窗使用
+// 识图搜索页 —— 图片识别 + 真实工厂匹配。
+//
+// 图片上传/识别统一走 window.ImageDrop（static/js/image_drop.js），
+// 工厂表格与详情统一走 window.FactoryUI（static/js/factory_common.js）。
+// 本文件只负责「识别完之后干什么」以及工厂筛选面板。
+let imgFactories = [];
 let imgFactoryModal = null;
 
-function bindFactoryPanel() {
-    if (!document.getElementById("imgFactoryQ")) return; // 非识图页则跳过
+document.addEventListener("DOMContentLoaded", () => {
     imgFactoryModal = new bootstrap.Modal(document.getElementById("imgFactoryModal"));
+
     document.getElementById("imgFactoryBtn").addEventListener("click", searchImgFactories);
     document.getElementById("imgFactoryQ").addEventListener("keydown", (e) => {
         if (e.key === "Enter") searchImgFactories();
     });
+
+    // 自定义识别回调：图片识别出的关键词直接驱动工厂匹配
+    const dropRoot = document.getElementById("imgDrop");
+    if (dropRoot) {
+        ImageDrop.mount(dropRoot, { onRecognized: onRecognized });
+    }
+
     loadImgFactoryFilters();
-    searchImgFactories(); // 进入页面先展示全量（本地模拟）工厂，可直接筛选
+
+    // 支持 /image-search?q= 直接带关键词进来
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) {
+        document.getElementById("imgFactoryQ").value = q;
+    }
+    searchImgFactories();
+});
+
+// 识别完成：展示识别详情 + 触发工厂匹配
+function onRecognized(keyword, data) {
+    renderRecognition(data);
+    document.getElementById("imgFactoryQ").value = keyword;
+    searchImgFactories();
 }
 
-function populateImgSelect(id, options, placeholder) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = `<option value="">${placeholder}</option>` +
-        options.map((o) => `<option value="${o}">${o}</option>`).join("");
+function renderRecognition(data) {
+    const box = document.getElementById("recogBox");
+    const engineLabel = data.engine === "keyword"
+        ? '<span class="badge-soft text-warning">未启用 AI 识图 · 按关键词检索</span>'
+        : `<span class="badge-soft text-success">识别引擎 ${FactoryUI.escapeHtml(data.engine)}</span>`;
+
+    const chips = (data.candidates || []).map((c) =>
+        `<button type="button" class="badge-soft me-1 use-candidate" data-kw="${FactoryUI.escapeHtml(c)}">${FactoryUI.escapeHtml(c)}</button>`
+    ).join("");
+
+    box.innerHTML = `
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            ${engineLabel}
+            ${data.category ? `<span class="badge-soft">品类：${FactoryUI.escapeHtml(data.category)}</span>` : ""}
+            ${data.material ? `<span class="badge-soft">材质：${FactoryUI.escapeHtml(data.material)}</span>` : ""}
+        </div>
+        <div class="fw-semibold mb-1">检索关键词：${FactoryUI.escapeHtml(data.keyword || "—")}</div>
+        ${data.desc ? `<div class="text-muted small mb-2">${FactoryUI.escapeHtml(data.desc)}</div>` : ""}
+        ${chips ? `<div class="mb-2 small text-muted">同义检索词：${chips}</div>` : ""}
+        ${data.note ? `<div class="alert alert-warning py-2 small mb-0">${FactoryUI.escapeHtml(data.note)}</div>` : ""}
+    `;
+    box.classList.remove("d-none");
+    const ph = document.getElementById("recogPlaceholder");
+    if (ph) ph.classList.add("d-none");
+
+    box.querySelectorAll(".use-candidate").forEach((el) => {
+        el.addEventListener("click", () => {
+            document.getElementById("imgFactoryQ").value = el.dataset.kw;
+            searchImgFactories();
+        });
+    });
 }
 
 async function loadImgFactoryFilters() {
     try {
         const res = await fetch("/api/factory/filters");
-        if (!res.ok) return;
         const data = await res.json();
-        populateImgSelect("imgFactoryRegion", data.regions, "全部地区");
-        populateImgSelect("imgFactoryIndustry", data.industries, "全部行业");
-        const scaleEl = document.getElementById("imgFactoryScale");
-        scaleEl.innerHTML = '<option value="">不限规模</option>' +
-            (data.scales || []).map((s) => `<option value="${s.value}">${s.label}</option>`).join("");
+        const fill = (id, items, placeholder, valueKey) => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            sel.innerHTML = (placeholder ? `<option value="">${placeholder}</option>` : "") +
+                items.map((it) => {
+                    const v = valueKey ? it[valueKey] : it;
+                    const label = valueKey ? it.label : it;
+                    return `<option value="${FactoryUI.escapeHtml(v)}">${FactoryUI.escapeHtml(label)}</option>`;
+                }).join("");
+        };
+        // 地区用 datalist：真实地址是「浙江省宁波市北仑区…」，等值下拉筛不出东西，得能自由输入
+        const regionList = document.getElementById("imgRegionList");
+        if (regionList) {
+            regionList.innerHTML = (data.regions || [])
+                .map((r) => `<option value="${FactoryUI.escapeHtml(r)}"></option>`).join("");
+        }
+        fill("imgFactoryIndustry", data.industries || [], "全部行业");
+        fill("imgFactoryScale", data.scales || [], "不限规模", "value");
+        fill("imgFactorySort", data.sorts || [], "", "value");
+
+        // 热门品类快捷入口
+        const hot = document.getElementById("imgHotCats");
+        if (hot) {
+            hot.innerHTML = (data.hot_categories || []).map((c) =>
+                `<button type="button" class="badge-soft me-1 use-hot" data-kw="${FactoryUI.escapeHtml(c)}">${FactoryUI.escapeHtml(c)}</button>`
+            ).join("");
+            hot.querySelectorAll(".use-hot").forEach((el) => {
+                el.addEventListener("click", () => {
+                    document.getElementById("imgFactoryQ").value = el.dataset.kw;
+                    searchImgFactories();
+                });
+            });
+        }
     } catch (e) {
-        console.warn("工厂筛选项加载失败", e);
+        /* 筛选项加载失败不阻断主流程 */
     }
 }
 
 async function searchImgFactories() {
-    const params = new URLSearchParams();
     const q = document.getElementById("imgFactoryQ").value.trim();
-    const region = document.getElementById("imgFactoryRegion").value;
+    const region = document.getElementById("imgFactoryRegion").value.trim();
     const industry = document.getElementById("imgFactoryIndustry").value;
     const scale = document.getElementById("imgFactoryScale").value;
     const sort = document.getElementById("imgFactorySort").value;
+    const onlyMfr = document.getElementById("imgOnlyManufacturer").checked;
+
+    const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (region) params.set("region", region);
     if (industry) params.set("industry", industry);
     if (scale) params.set("scale", scale);
-    params.set("sort", sort);
+    if (onlyMfr) params.set("only_manufacturer", "1");
+    params.set("sort", sort || "relevance");
 
     const tbody = document.getElementById("imgFactoryTable");
     const countEl = document.getElementById("imgFactoryCount");
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> 匹配中...</td></tr>';
+    const noticeEl = document.getElementById("imgFactoryNotice");
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> 匹配中...</td></tr>';
+    noticeEl.classList.add("d-none");
 
     try {
         const res = await fetch(`/api/factory?${params}`);
@@ -176,133 +140,32 @@ async function searchImgFactories() {
         const data = await res.json();
 
         imgFactories = data.results || [];
-        countEl.textContent = data.data_source
-            ? `共 ${data.total} 家工厂 · 数据源：${data.data_source}`
-            : `共 ${data.total} 家工厂`;
+        countEl.textContent = `共 ${data.total} 家${data.data_source ? " · 数据源：" + data.data_source : ""}`;
+
+        if (data.notice) {
+            noticeEl.className = "alert alert-warning py-2 small mb-2";
+            noticeEl.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>${FactoryUI.escapeHtml(data.notice)}`;
+            noticeEl.classList.remove("d-none");
+        }
 
         if (!data.total) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">未找到匹配的工厂，换个关键词或筛选条件试试</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">没有匹配到工厂，换个关键词或放宽筛选条件</td></tr>';
             return;
         }
-        tbody.innerHTML = data.results.map(renderImgFactoryRow).join("");
-        tbody.querySelectorAll(".view-detail").forEach((btn) =>
-            btn.addEventListener("click", () => openImgFactoryDetail(btn.dataset.id)));
+
+        tbody.innerHTML = data.results.map(FactoryUI.renderRow).join("");
+        tbody.querySelectorAll(".view-detail").forEach((btn) => {
+            btn.addEventListener("click", () => openImgFactoryDetail(btn.dataset.id));
+        });
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">加载失败: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">加载失败: ${FactoryUI.escapeHtml(e.message)}</td></tr>`;
     }
-}
-
-function escImg(s) {
-    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-    }[c]));
-}
-
-function truncImg(s, n) {
-    s = String(s ?? "");
-    return s.length > n ? s.slice(0, n) + "…" : s;
-}
-
-function fmtRevenueImg(v) {
-    if (v == null) return "—";
-    if (v >= 10000) return `${(v / 10000).toFixed(1)}亿`;
-    return `${v}万`;
-}
-
-function fmtScaleImg(f) {
-    if (f.is_external) {
-        return f.reg_capital ? `注册资本 ${f.reg_capital}` : "—";
-    }
-    const emp = f.employees != null ? `${f.employees}人` : "";
-    const area = f.factory_area != null ? `${(f.factory_area / 10000).toFixed(1)}万㎡` : "";
-    return [emp, area].filter(Boolean).join(" · ") || "—";
-}
-
-function renderImgFactoryRow(f) {
-    const matched = new Set(f.matched_products || []);
-    let productCell;
-    if (f.is_external && f.business_scope) {
-        productCell = `<small class="text-muted" title="${escImg(f.business_scope)}">${escImg(truncImg(f.business_scope, 42))}</small>`;
-    } else if (f.main_products && f.main_products.length) {
-        productCell = f.main_products
-            .map((p) => {
-                const hit = matched.has(p);
-                return `<span class="badge border ${hit ? "badge-soft" : ""}" style="margin:1px">${escImg(p)}${hit ? " <i class='bi bi-check2'></i>" : ""}</span>`;
-            })
-            .join("");
-    } else {
-        productCell = '<small class="text-muted">—</small>';
-    }
-
-    return `
-    <tr>
-        <td>
-            <div class="fw-semibold">${escImg(f.name)}
-                ${f.verified ? '<i class="bi bi-patch-check-fill text-primary ms-1" title="已验证"></i>' : ""}
-            </div>
-            <small class="text-muted">${escImg((f.certifications || []).slice(0, 2).join(" · ")) || escImg(f.source)}</small>
-        </td>
-        <td><span class="badge-soft">${escImg(f.industry)}</span></td>
-        <td class="text-muted" title="${escImg(f.region)}">${escImg(truncImg(f.region, 22))}</td>
-        <td><small>${escImg(fmtScaleImg(f))}</small></td>
-        <td><strong style="font-variant-numeric: tabular-nums">${fmtRevenueImg(f.annual_revenue)}</strong></td>
-        <td>${productCell}</td>
-        <td class="text-end">
-            <button class="btn btn-sm btn-outline-primary view-detail" data-id="${f.id}">
-                <i class="bi bi-eye"></i>
-            </button>
-        </td>
-    </tr>`;
 }
 
 function openImgFactoryDetail(id) {
     const f = imgFactories.find((x) => String(x.id) === String(id));
     if (!f) return alert("未找到工厂详情");
-
     document.getElementById("imgFactoryTitle").textContent = f.name;
-    document.getElementById("imgFactoryBody").innerHTML = renderImgFactoryDetail(f);
+    document.getElementById("imgFactoryBody").innerHTML = FactoryUI.renderDetail(f);
     imgFactoryModal.show();
 }
-
-function renderImgFactoryDetail(f) {
-    const field = (label, value) =>
-        value ? `
-        <div class="col-md-6">
-            <div class="text-muted small">${label}</div>
-            <div class="fw-semibold">${escImg(value)}</div>
-        </div>` : "";
-
-    const rows = [];
-    rows.push(field("行业", f.industry));
-    rows.push(field("地址", f.region));
-
-    if (f.is_external) {
-        rows.push(field("注册资本", f.reg_capital));
-        rows.push(field("法定代表人", f.legal_person));
-        rows.push(field("成立日期", f.established));
-        rows.push(field("统一社会信用代码", f.credit_code));
-    } else {
-        rows.push(field("员工规模", f.employees != null ? `${f.employees} 人` : ""));
-        rows.push(field("厂房面积", f.factory_area != null ? `${f.factory_area.toLocaleString()} ㎡` : ""));
-        rows.push(field("年销售额", fmtRevenueImg(f.annual_revenue)));
-    }
-    rows.push(field("数据来源", `${f.source}${f.verified ? "（已认证）" : ""}`));
-
-    if (f.is_external && f.business_scope) {
-        rows.push(`
-            <div class="col-12">
-                <div class="text-muted small mb-1">经营范围</div>
-                <div>${escImg(f.business_scope)}</div>
-            </div>`);
-    } else if (f.main_products && f.main_products.length) {
-        rows.push(`
-            <div class="col-12">
-                <div class="text-muted small mb-1">可生产产品</div>
-                <div>${f.main_products.map((p) => `<span class="badge-soft me-1">${escImg(p)}</span>`).join("")}</div>
-            </div>`);
-    }
-
-    return `<div class="row g-3">${rows.join("")}</div>`;
-}
-
-bindFactoryPanel();

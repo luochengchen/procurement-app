@@ -22,6 +22,13 @@ ALLOWED_IMAGE_TYPES = {"png", "jpg", "jpeg", "webp", "bmp"}
 IMAGE_SEARCH_API_URL = os.environ.get("IMAGE_SEARCH_API_URL", "")
 IMAGE_SEARCH_API_KEY = os.environ.get("IMAGE_SEARCH_API_KEY", "")
 
+# 图片识别（视觉模型）：OpenAI 兼容协议，留空则不做 AI 识图、只按用户填的关键词检索。
+# 例：VISION_API_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+#     VISION_MODEL=qwen-vl-max
+VISION_API_URL = os.environ.get("VISION_API_URL", "")
+VISION_API_KEY = os.environ.get("VISION_API_KEY", "")
+VISION_MODEL = os.environ.get("VISION_MODEL", "")
+
 # Certification external API (reserved)
 CERTIFICATION_API_URL = os.environ.get("CERTIFICATION_API_URL", "")
 CERTIFICATION_API_KEY = os.environ.get("CERTIFICATION_API_KEY", "")

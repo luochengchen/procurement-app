@@ -9,6 +9,19 @@
     </div>
 </div>
 
+<!-- 放图片：识别出产品/材料关键词后自动填入下方搜索 -->
+<div class="mb-3">
+    {% set drop_id = "matDrop" %}
+    {% set drop_compact = true %}
+    {% set drop_title = "有产品照片？放进来查原材料价格" %}
+    {% set drop_hint = "点击选择 · 拖拽 · Ctrl+V 粘贴" %}
+    {% set drop_kw_placeholder = "补充材料/产品关键词（可选）" %}
+    {% set drop_btn = "识别并查价" %}
+    {% set drop_auto = true %}
+    {% set drop_target = "fillSearch" %}
+    {% include "partials/image_drop.html" %}
+</div>
+
 <!-- 筛选 -->
 <div class="filter-bar">
     <div class="row g-2 align-items-end">
@@ -104,5 +117,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/image_drop.js') }}"></script>
 <script src="{{ url_for('static', filename='js/materials.js') }}"></script>
 {% endblock %}

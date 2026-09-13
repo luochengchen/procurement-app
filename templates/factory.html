@@ -2,11 +2,24 @@
 {% block title %}工厂匹配 - 跨境采购助手{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <div>
         <h3 class="mb-1"><i class="bi bi-buildings me-2 text-primary"></i>工厂自动匹配</h3>
-        <p class="text-muted mb-0">按产品匹配可生产的工厂，查看规模、地址、年销售额与产能</p>
+        <p class="text-muted mb-0">按产品匹配可生产的真实企业，看经营范围、联系方式、规模与出口资质</p>
     </div>
+</div>
+
+<!-- 放图片：识别出产品关键词后自动填入下方搜索 -->
+<div class="mb-3">
+    {% set drop_id = "facDrop" %}
+    {% set drop_compact = true %}
+    {% set drop_title = "有产品图片？放进来直接匹配工厂" %}
+    {% set drop_hint = "点击选择 · 拖拽 · Ctrl+V 粘贴" %}
+    {% set drop_kw_placeholder = "补充产品关键词（可选）" %}
+    {% set drop_btn = "识别并搜工厂" %}
+    {% set drop_auto = true %}
+    {% set drop_target = "fillSearch" %}
+    {% include "partials/image_drop.html" %}
 </div>
 
 <!-- 筛选 -->
@@ -18,12 +31,10 @@
         </div>
         <div class="col-md-2">
             <label class="form-label">地区</label>
-            <select class="form-select" id="regionFilter">
-                <option value="">全部地区</option>
-                {% for r in regions %}
-                <option value="{{ r }}">{{ r }}</option>
-                {% endfor %}
-            </select>
+            <input type="text" class="form-control" id="regionFilter" list="factoryRegionList" placeholder="如：宁波">
+            <datalist id="factoryRegionList">
+                {% for r in regions %}<option value="{{ r }}"></option>{% endfor %}
+            </datalist>
         </div>
         <div class="col-md-2">
             <label class="form-label">行业</label>
@@ -38,24 +49,39 @@
             <label class="form-label">规模</label>
             <select class="form-select" id="scaleFilter">
                 <option value="">不限规模</option>
-                <option value="small">小型（&lt;100人）</option>
-                <option value="medium">中型（100-300人）</option>
-                <option value="large">大型（&gt;300人）</option>
+                {% for s in scales %}
+                <option value="{{ s.value }}">{{ s.label }}</option>
+                {% endfor %}
             </select>
         </div>
         <div class="col-md-3">
             <label class="form-label">排序</label>
             <div class="input-group">
                 <select class="form-select" id="sortBy">
-                    <option value="revenue_desc">年销售额 ↓</option>
-                    <option value="employees_desc">员工规模 ↓</option>
-                    <option value="name">厂名</option>
+                    {% for s in sorts %}
+                    <option value="{{ s.value }}">{{ s.label }}</option>
+                    {% endfor %}
                 </select>
-                <button class="btn btn-primary" id="searchBtn"><i class="bi bi-search"></i></button>
+                <button class="btn btn-primary" id="searchBtn" title="搜索工厂"><i class="bi bi-search"></i></button>
             </div>
         </div>
     </div>
+    <div class="d-flex align-items-center flex-wrap gap-3 mt-2">
+        <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="onlyManufacturer">
+            <label class="form-check-label small" for="onlyManufacturer">仅看生产型厂家（剔除纯贸易）</label>
+        </div>
+        <div class="small text-muted d-flex align-items-center gap-1 flex-wrap">
+            <span>热门品类：</span>
+            {% for c in hot_categories %}
+            <button type="button" class="badge-soft hot-cat" data-cat="{{ c }}">{{ c }}</button>
+            {% endfor %}
+        </div>
+    </div>
 </div>
+
+<div id="factoryNotice" class="alert alert-warning py-2 small mb-3 d-none"></div>
+<div id="keywordHint" class="d-none mb-2"></div>
 
 <!-- 结果 -->
 <div class="card">
@@ -71,27 +97,29 @@
                     <th>行业</th>
                     <th>地址</th>
                     <th>规模</th>
-                    <th>年销售额</th>
+                    <th>联系方式</th>
                     <th>可生产产品</th>
                     <th class="text-end">操作</th>
                 </tr>
             </thead>
             <tbody id="factoryTable">
-                <tr><td colspan="7" class="text-center text-muted py-4">输入产品关键词，点击搜索匹配工厂</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">输入产品关键词，或放入一张产品图片开始匹配</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
 <!-- 数据源说明 -->
-<div class="alert alert-info mt-3 d-flex align-items-center">
-    <i class="bi bi-info-circle-fill me-2"></i>
-    <div>
-        <strong>数据源</strong> —
-        输入关键词时优先调用真实工商数据（天眼查 → Apizero），未配置或调用失败时回退本地演示数据。
-        配置环境变量 <code>TIANYANCHA_TOKEN</code>（主，免费 500 次/天）或
-        <code>APIZERO_API_KEY</code>（保底，匿名 20 次/天）即可接入真实数据。
-        注：工商数据不含「年销售额/员工规模」，仅 1688 工厂 API 提供（需企业资质）。
+<div class="alert alert-info mt-3 d-flex align-items-start">
+    <i class="bi bi-info-circle-fill me-2 mt-1"></i>
+    <div class="small">
+        <strong>数据来源与口径</strong>
+        <ul class="mb-0 ps-3">
+            <li>关键词搜索时优先调用真实工商数据（<code>TIANYANCHA_TOKEN</code> → <code>APIZERO_API_KEY</code>），失败才回退本地演示数据 —— 回退原因会显示在上方黄色提示条里。</li>
+            <li><strong>行业 / 可生产产品 / 生产型 / 出口资质</strong>均由「经营范围」解析得出，不是原始字段。</li>
+            <li>工商数据<strong>不含年销售额、员工数、厂房面积</strong>，因此「规模」列按<strong>注册资本换算档位</strong>并标注口径；模拟数据行才显示真实员工数与面积。</li>
+            <li>联系方式（电话/邮箱）来自工商登记，可直接点击拨号或复制。</li>
+        </ul>
     </div>
 </div>
 
@@ -110,5 +138,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/factory_common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/image_drop.js') }}"></script>
 <script src="{{ url_for('static', filename='js/factory.js') }}"></script>
 {% endblock %}
