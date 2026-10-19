@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "title": "Procurement Desk",
+    "description": "Sidebar entry that opens procurement-app (material pricing, cost calculator, image search, factory matching, certification, competitor analysis) in a floating window inside the Harness Web UI."
+  },
+  "action": {
+    "title": "Procurement Desk",
+    "hint": "Open the procurement assistant in a floating window"
+  }
+}

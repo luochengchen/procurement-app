@@ -1,0 +1,10 @@
+- insert:
+    - id: procurement-desk
+      name: '@local/procurement-desk'
+      config:
+        # 项目根目录（app.py / templates / static / data.db 所在处）
+        root: F:/Projects/procurement-app
+        # Harness Web 服务器上的挂载点
+        path: /procure
+        # 本地 Flask 端口；插件用 PORT 环境变量传给 dsh-plugin/serve.py
+        port: 5127

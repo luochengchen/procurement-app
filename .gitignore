@@ -10,3 +10,5 @@ dist/
 *.egg-info/
 .DS_Store
 Thumbs.db
+# DSH 插件运行时目录（后端日志），不入库
+.dsh/
