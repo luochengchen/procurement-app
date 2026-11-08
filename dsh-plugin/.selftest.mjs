@@ -3,7 +3,7 @@
 import http from 'node:http';
 import { apply } from './index.js';
 
-const ROOT = 'F:/Projects/procurement-app';
+const ROOT = 'F:/dsh项目/procurement-app';
 let route = null;
 const ctx = {
   webServer: { register: (opts) => { route = opts; return () => {}; } },

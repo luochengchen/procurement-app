@@ -21,6 +21,34 @@ window.__ModuleLoader__.load({
 
     /** Served by this bundle's Host half. */
     const SRC = '/procure/';
+
+    /**
+     * 能在系统浏览器里打开的 origin。
+     *
+     * 桌面端的 `window.location.origin` 是 `dsh-app://app`：主进程用自定义协议从
+     * `dsh-web-frontend/dist` 提供 SPA，其余请求再转发给宿主 HTTP 服务。主窗口的
+     * `setWindowOpenHandler` 只把 http/https 交给 `shell.openExternal`，`dsh-app://`
+     * 一律 deny（app.asar 内 lib/main.js）——拿 location.origin 拼 URL 会**静默失败**。
+     * 宿主的真实 origin 由桌面端注入在 `__DSH_TRANSPORT__.streamBaseUrl`；
+     * 网页版直接就是 location.origin。
+     */
+    function externalOrigin() {
+      const { protocol, origin } = window.location;
+      if (protocol === 'http:' || protocol === 'https:') return origin;
+      const candidates = [
+        globalThis.__DSH_TRANSPORT__?.streamBaseUrl,
+        globalThis.__DSH_BOOT__?.streamBaseUrl,
+      ];
+      for (const candidate of candidates) {
+        if (typeof candidate !== 'string' || candidate === '') continue;
+        try {
+          return new URL(candidate).origin;
+        } catch {
+          /* 畸形值继续找下一个来源 */
+        }
+      }
+      return null;
+    }
     /** Window geometry survives closing and page reloads. */
     const GEOM_KEY = 'procure-desk.geom';
     // 多页应用，顶部有 7 个导航项 + 主题按钮，太窄会把 navbar 折成汉堡菜单。
@@ -463,9 +491,17 @@ window.__ModuleLoader__.load({
         }
       };
 
-      /** 绝对 URL 才会被 Electron 交给系统默认浏览器，相对地址会被直接拒绝。 */
+      /**
+       * 绝对 http(s) URL 才会被 Electron 交给系统默认浏览器，相对地址和 `dsh-app://`
+       * 都会被主进程直接拒绝（点了没反应）。
+       */
       const openInBrowser = () => {
-        window.open(new URL(SRC, window.location.origin).href, '_blank', 'noopener');
+        const base = externalOrigin();
+        if (base === null) {
+          console.warn('[procurement-desk] 拿不到宿主 HTTP origin，无法在外部浏览器打开');
+          return;
+        }
+        window.open(new URL(SRC, base).href, '_blank', 'noopener');
       };
 
       const barButton = (label, onClick) => h('button', {

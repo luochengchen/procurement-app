@@ -30,7 +30,7 @@ export const inject = ['webServer'];
 
 const DEFAULTS = {
   /** 项目根目录：app.py / templates / static / data.db 都在这里。 */
-  root: 'F:/Projects/procurement-app',
+  root: 'F:/dsh项目/procurement-app',
   /** Harness Web 服务器上的挂载点。 */
   path: '/procure',
   /** Flask 端口。改这里要同时改 cordis.patch.yml。 */
